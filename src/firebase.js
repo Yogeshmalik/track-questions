@@ -1,8 +1,9 @@
-
-
+import firebase from "firebase/app";
+import "firebase/firestore";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 
 const firebaseConfig = {
+  // TODO: Add your Firebase config here
   apiKey: "AIzaSyBX8KTobRdoK4B5bmn65PutFXrMI0-CL2s",
   authDomain: "track-questions.firebaseapp.com",
   projectId: "track-questions",
@@ -12,4 +13,6 @@ const firebaseConfig = {
   measurementId: "G-RMBMP4NXP2",
 };
 
-export default firebaseConfig;
+firebase.initializeApp(firebaseConfig);
+
+export const firestore = firebase.firestore();

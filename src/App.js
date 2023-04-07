@@ -1,6 +1,7 @@
 import './App.css';
 import UploadForm from './UploadForm'
 import firebase from './firebase';
+import firestore from './firebase';
 
 function App() {
   return (

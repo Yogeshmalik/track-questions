@@ -11,3 +11,14 @@ Use a backend service like Firebase or MongoDB to store the questions in the dat
 When the app needs to pick questions for a test, retrieve a random sample of questions from the database and update their usage limit and timestamp in the database.
 
 Display the questions to the user and track their usage limit and timestamp.
+
+You will need to customize it to fit your specific requirements. You will also need to implement the backend service and data model, which will depend on the service you choose to use.
+
+To access questions from an external source or file, you could implement a parser that reads the file format and extracts the questions, or you could use an API to retrieve questions from an external database. Some possible ways to access questions from external sources are:
+
+CSV or Excel files: You could use a library like PapaParse or SheetJS to parse the file and extract the questions.
+SQL databases: You could use a library like Sequelize or Knex.js to connect to the database and retrieve the questions.
+
+REST APIs: You could use libraries like Axios or Fetch to make requests to a REST API that returns questions in a JSON format.
+GraphQL APIs: You could use libraries like Apollo Client or Relay to query a GraphQL API that returns questions in a structured format.
+Once you have extracted the questions from an external source, you can store them in the backend service as described above.
