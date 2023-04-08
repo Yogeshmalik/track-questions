@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
-import firebase from "firebase/app";
-import "firebase/firestore";
+// import firebase from 'firebase/app';
+import 'firebase/firestore';
 import 'firebase/storage';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+
 
 const QuestionList = () => {
   const [questions, setQuestions] = useState([]);

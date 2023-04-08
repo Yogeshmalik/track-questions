@@ -2,7 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import firebaseConfig from "./firebaseConfig";
-import firebase from "firebase/app";
+// import firebase from "firebase/app";
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+
 import "firebase/firestore";
 import App from "./App";
 import reportWebVitals from './reportWebVitals';

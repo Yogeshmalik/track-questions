@@ -2,11 +2,12 @@
 // or react-file-input to simplify the file upload process.
 // Here's an example of how you could create a file upload component using react-dropzone:
 
-// import parseFile from "./parseFile";
-// import {uploadQuestions} from "./uploadQuestions";
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import firebase from "firebase/app";
+// import firebase from "firebase/app";
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
+
 import "firebase/firestore";
 import 'firebase/storage';
 
