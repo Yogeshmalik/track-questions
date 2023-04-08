@@ -22,7 +22,7 @@ function App() {
   // const db = firebase.firestore();
 
   return (
-    <div className="App">
+    <div className="container">
       Hello
       <UploadForm />
       <QuestionList />

@@ -81,11 +81,11 @@ const UploadForm = () => {
     <form onSubmit={handleSubmit}>
       <div {...getRootProps()}>
         <input {...getInputProps()} />
-        <p>Drag and drop a file here, or click to select a file</p>
+        <p className="drag-drop-select">Drag and drop a file here, or click to select a file</p>
       </div>
-      <textarea value={text} onChange={handleTextChange} />
+      <textarea placeholder="ENTER YOUR QUESTION HERE..." className="inputarea" value={text} onChange={handleTextChange} />
       {error && <p>{error}</p>}
-      <button type="submit">Upload</button>
+      <button type="submit">UPLOAD</button>
     </form>
   );
 };

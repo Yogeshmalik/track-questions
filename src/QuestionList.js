@@ -4,6 +4,8 @@ import 'firebase/firestore';
 import 'firebase/storage';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
+import './QuestionList.css';
+
 
 
 const QuestionList = () => {
@@ -73,11 +75,11 @@ const QuestionList = () => {
   }
 
   return (
-    <div>
+    <div className="question-list-container">
       <h2>Questions</h2>
       <ul>
         {questions.map((question) => (
-          <li key={question.id}>
+          <li className="question-card" key={question.id}>
             <input type="checkbox" />
             {question.text}
             <span>Remaining Usage: {question.remainingUsage}</span>
