@@ -13,6 +13,4 @@ const firebaseConfig = {
   measurementId: "G-RMBMP4NXP2",
 };
 
-firebase.initializeApp(firebaseConfig);
-
-export const firestore = firebase.firestore();
+export default firebaseConfig;
