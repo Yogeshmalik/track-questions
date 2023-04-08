@@ -2,15 +2,17 @@
 // or react-file-input to simplify the file upload process.
 // Here's an example of how you could create a file upload component using react-dropzone:
 
+// import parseFile from "./parseFile";
+// import {uploadQuestions} from "./uploadQuestions";
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import firebase from "firebase/app";
 import "firebase/firestore";
-// import parseFile from "./parseFile";
-// import {uploadQuestions} from "./uploadQuestions";
+import 'firebase/storage';
 
-export const UploadForm = () => {
+const UploadForm = () => {
   const [file, setFile] = useState(null);
+  const [text, setText] = useState("");
   const [error, setError] = useState(null);
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -19,52 +21,72 @@ export const UploadForm = () => {
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleTextChange = (event) => {
+    setText(event.target.value);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError(null);
-    if (!file) {
-      setError("Please select a file to upload.");
-      return;
+    let questions;
+    if (file) {
+      questions = await parseFile(file);
+    } else {
+      questions = parseText(text);
     }
     try {
-      const questions = await parseFile(file);
       await uploadQuestions(questions);
-      alert("File uploaded successfully!");
+      alert("Questions uploaded successfully!");
     } catch (error) {
       console.error(error);
-      setError("Error uploading file. Please try again.");
+      setError("Error uploading questions. Please try again.");
+    }
+  };
+  /* parseText, parseFile, uploadQuestions */
+
+  const parseFile = async (file) => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = (event) => {
+        const content = event.target.result;
+        const questions = parseText(content);
+        resolve(questions);
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
+      reader.readAsText(file);
+    });
+  };
+
+  const parseText = (text) => {
+    const lines = text.trim().split("\n");
+    const questions = lines.map((line) => ({
+      text: line.trim(),
+      remainingUsage: 100,
+      lastUsed: null,
+    }));
+    return questions;
+  };
+
+  const uploadQuestions = async (questions) => {
+    const db = firebase.firestore();
+    for (const question of questions) {
+      await db.collection("questions").add(question);
     }
   };
 
   return (
-    <form className="upload-form" onSubmit={handleSubmit}>
-      <div className="dropzone-container" {...getRootProps()}>
+    <form onSubmit={handleSubmit}>
+      <div {...getRootProps()}>
         <input {...getInputProps()} />
-        <p className="dropzone">
-          Drag and drop a file here, or click to select a file
-        </p>
+        <p>Drag and drop a file here, or click to select a file</p>
       </div>
-      {error && <p className="error-message">{error}</p>}
-      <button className="submit-button" type="submit">
-        Upload
-      </button>
+      <textarea value={text} onChange={handleTextChange} />
+      {error && <p>{error}</p>}
+      <button type="submit">Upload</button>
     </form>
   );
 };
 
 export default UploadForm;
-
-export const parseFile = async file => {
-  // Write code to parse the file and return an array of questions
-};
-
-export const uploadQuestions = async questions => {
-  const db = firebase.firestore();
-  for (const question of questions) {
-    await db.collection('questions').add({
-      text: question.text,
-      remainingUsage: 100,
-      lastUsed: null
-    });
-  }
-};
