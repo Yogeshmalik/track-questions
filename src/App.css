@@ -1,11 +1,11 @@
-*{
-box-sizing: border-box;
-/* margin: 0; */
+* {
+  box-sizing: border-box;
+  /* margin: 0; */
 }
 
 body {
   font-family: Arial, sans-serif;
-  background-color: cornflowerblue;
+  background-color: white;
   align-items: center;
   display: flex;
   justify-content: center;
@@ -17,7 +17,7 @@ body {
   align-items: center;
   justify-content: center;
   /* height: 100vh; */
-  padding-top: 40px
+  padding-top: 40px;
 }
 
 .question {
@@ -27,34 +27,80 @@ body {
   border-radius: 5px;
 }
 
-.drag-drop-select{
-  border: dotted 2px blue;
+.drag-drop-select {
+  border: none;
+  border-radius: 10px;
+  color: white;
+  background-color: orange;
   padding: 30px;
   width: 100%;
   align-items: center;
   text-align: center;
+  font-weight: 900;
 }
 
-button {
-  background-color: chartreuse;
-  border: none;
-  border-radius: 10px;
-  height: 2rem;
-  display: flex;
-  /* justify-content: center; */
-  text-align: center;
-  align-items: center;
-  margin: 0 auto;
-  padding: 10px;
+.drag-drop-select:hover {
+  background-color: cornflowerblue;
+  color: #f0f0f0;
+  cursor: pointer;
 }
+
+.inputarea::placeholder {
+  color: blue;
+  text-align: center;
+  line-height: 40px;
+}
+
 .inputarea {
-  background-color: khaki;
+  background-color: white;
+  color: blue;
   display: flex;
   justify-content: center;
   margin: 0 auto;
-  margin-bottom: 10px;
-  height: 40px;
-  width: 100%;
+  margin-bottom: 12px;
+  height: 70px;
+  width: 99.5%;
   border-radius: 10px;
   padding: 10px;
+  border-top: 2px dotted orange;
+  border-bottom: 2px dotted seagreen;
+}
+.inputarea:hover {
+  background-color: cornflowerblue;
+  border: none;
+  padding-top: 12px;
+}
+
+button {
+  background-color: seagreen;
+  border: none;
+  border-radius: 10px;
+  height: 4.2rem;
+  cursor: pointer;
+  font-weight: 900;
+  text-align: center;
+  color: #f0f0f0;
+  width: 100%;
+}
+
+button:hover {
+  background-color: cornflowerblue;
+  color: white;
+  font-weight: 800;
+}
+
+.errorMsg {
+  text-align: center;
+  padding: 10px;
+  color: red;
+}
+
+.hero {
+  color: blueviolet;
+}
+
+.noQuestFound {
+  color: red;
+  font-weight: 700;
+  padding: 20px;
 }

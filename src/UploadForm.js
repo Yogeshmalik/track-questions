@@ -4,12 +4,12 @@
 
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-// import firebase from "firebase/app";
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-
-import "firebase/firestore";
-import 'firebase/storage';
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
+import { storage } from "./firebaseConfig";
+import { ref, uploadBytes, listAll } from "firebase/storage";
+import { v4 } from "uuid";
+import "firebase/compat/storage";
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -81,11 +81,18 @@ const UploadForm = () => {
     <form onSubmit={handleSubmit}>
       <div {...getRootProps()}>
         <input {...getInputProps()} />
-        <p className="drag-drop-select">Drag and drop a file here, or click to select a file</p>
+        <p className="drag-drop-select">
+          Drag and drop a file here, or click HERE to select a file
+        </p>
       </div>
-      <textarea placeholder="ENTER YOUR QUESTION HERE..." className="inputarea" value={text} onChange={handleTextChange} />
-      {error && <p>{error}</p>}
-      <button type="submit">UPLOAD</button>
+      <textarea
+        placeholder="ENTER YOUR QUESTION HERE..."
+        className="inputarea"
+        value={text}
+        onChange={handleTextChange}
+      />
+      <button type="submit">UPLOAD Entered Question</button>
+      {error && <p className="errorMsg">{error}</p>}
     </form>
   );
 };

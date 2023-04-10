@@ -1,12 +1,15 @@
-// import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-import "firebase/firestore";
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
+import "firebase/compat/database";
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  // TODO: Add your Firebase config here
   apiKey: "AIzaSyBX8KTobRdoK4B5bmn65PutFXrMI0-CL2s",
   authDomain: "track-questions.firebaseapp.com",
+  databaseURL:
+    "https://track-questions-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "track-questions",
   storageBucket: "track-questions.appspot.com",
   messagingSenderId: "645079332384",
@@ -14,4 +17,10 @@ const firebaseConfig = {
   measurementId: "G-RMBMP4NXP2",
 };
 
-export default firebaseConfig;
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+export const storage = getStorage(app);
+
+// const db = firebase.firestore();
+// const database = firebase.database();

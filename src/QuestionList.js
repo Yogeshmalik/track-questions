@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
 // import firebase from 'firebase/app';
-import 'firebase/firestore';
-import 'firebase/storage';
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-import './QuestionList.css';
-
-
+import "firebase/firestore";
+import "firebase/storage";
+import firebase from "firebase/compat/app";
+import "firebase/compat/firestore";
+import "./QuestionList.css";
 
 const QuestionList = () => {
   const [questions, setQuestions] = useState([]);
@@ -71,7 +69,7 @@ const QuestionList = () => {
   }
 
   if (questions.length === 0) {
-    return <p>No questions found.</p>;
+    return <p className="noQuestFound">No questions found.</p>;
   }
 
   return (
