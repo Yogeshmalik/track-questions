@@ -62,8 +62,10 @@ body {
   width: 99.5%;
   border-radius: 10px;
   padding: 10px;
-  border-top: 2px dotted orange;
-  border-bottom: 2px dotted seagreen;
+  border-top: none;
+  border-bottom: none;
+  /* border-top: 2px dotted orange; */
+  /* border-bottom: 2px dotted seagreen; */
 }
 .inputarea:hover {
   background-color: cornflowerblue;

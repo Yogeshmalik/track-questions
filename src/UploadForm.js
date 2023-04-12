@@ -1,15 +1,15 @@
 // To create the form component in React, you could use a library like react-dropzone
 // or react-file-input to simplify the file upload process.
 // Here's an example of how you could create a file upload component using react-dropzone:
+// https://www.youtube.com/watch?v=YOAeBSCkArA this video shows how to uplaoad and retrieve img from firebase storage
 
+// import { storage } from "./firebaseConfig";
+// import { ref, uploadBytes, listAll } from "firebase/storage";
+// import { v4 } from "uuid";
 import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import firebase from "firebase/compat/app";
-import "firebase/compat/firestore";
-import { storage } from "./firebaseConfig";
-import { ref, uploadBytes, listAll } from "firebase/storage";
-import { v4 } from "uuid";
-import "firebase/compat/storage";
+import "firebase/compat/database";
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -43,7 +43,6 @@ const UploadForm = () => {
       setError("Error uploading questions. Please try again.");
     }
   };
-  /* parseText, parseFile, uploadQuestions */
 
   const parseFile = async (file) => {
     const reader = new FileReader();
@@ -71,9 +70,14 @@ const UploadForm = () => {
   };
 
   const uploadQuestions = async (questions) => {
-    const db = firebase.firestore();
+    const dbRef = firebase.database().ref("questions");
     for (const question of questions) {
-      await db.collection("questions").add(question);
+      const newQuestionRef = dbRef.push();
+      const newQuestion = {
+        ...question,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      await newQuestionRef.set(newQuestion);
     }
   };
 
@@ -91,10 +95,12 @@ const UploadForm = () => {
         value={text}
         onChange={handleTextChange}
       />
-      <button type="submit">UPLOAD Entered Question</button>
+      <button type="submit">UPLOAD file or UPLOAD Entered Question</button>
+
       {error && <p className="errorMsg">{error}</p>}
     </form>
   );
 };
 
 export default UploadForm;
+
