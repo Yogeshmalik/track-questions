@@ -3,6 +3,7 @@ import { useDropzone } from "react-dropzone";
 import firebase from "firebase/compat/app";
 import "firebase/compat/database";
 import { dbRef, firebaseConfig } from "./firebaseConfig";
+import Papa from "papaparse";
 
 const UploadForm = () => {
   const [file, setFile] = useState(null);
@@ -17,6 +18,34 @@ const UploadForm = () => {
   });
   const [latestData, setLatestData] = useState({});
   // const [totalLimit, setTotalLimit] = useState(100);
+
+  const newQuestion = async () => {
+    try {
+      const newQuestionRef = dbRef.child("questions").push();
+      const newQuestion = {
+        question: userData.question.trim(),
+        option1: userData.options.option1.trim(),
+        option2: userData.options.option2.trim(),
+        option3: userData.options.option3.trim(),
+        option4: userData.options.option4.trim(),
+        timesUsed: 0,
+        timesRemaining: parseInt(userData.timesRemaining),
+        totalLimit: parseInt(userData.totalLimit),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      await newQuestionRef.set(newQuestion);
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        timesUsed: "",
+        timesRemaining: "",
+        totalLimit: "",
+      });
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading question. Please try again.");
+    }
+  };
 
   const onDrop = useCallback((acceptedFiles) => {
     setFile(acceptedFiles[0]);
@@ -44,13 +73,15 @@ const UploadForm = () => {
             userData.options.option3.trim(),
             userData.options.option4.trim(),
           ],
-          remainingUsage: userData.timesRemaining,
+          remainingUsage: parseInt(userData.timesRemaining),
           lastUsed: null,
         },
       ];
     }
     try {
       await uploadQuestions(questions);
+      await newQuestion();
+      await uploadUserData();
       alert("Questions uploaded successfully!");
     } catch (error) {
       console.error(error);
@@ -63,13 +94,30 @@ const UploadForm = () => {
     return new Promise((resolve, reject) => {
       reader.onload = (event) => {
         const content = event.target.result;
-        const questions = parseText(content);
+        let questions;
+        if (file.name.endsWith(".csv")) {
+          questions = parseCSV(content);
+        } else {
+          questions = parseText(content);
+        }
         resolve(questions);
       };
       reader.onerror = () => {
         reject(new Error("Failed to read file"));
       };
       reader.readAsText(file);
+    });
+  };
+
+  const parseCSV = (text) => {
+    const results = Papa.parse(text, { header: true });
+    return results.data.map((item) => {
+      return {
+        text: item.question,
+        options: [item.option1, item.option2, item.option3, item.option4],
+        remainingUsage: 100,
+        lastUsed: null,
+      };
     });
   };
 
@@ -88,6 +136,8 @@ const UploadForm = () => {
   };
 
   const uploadQuestions = async (questions) => {
+    const dbRef = firebase.database().ref("questions");
+
     for (const question of questions) {
       const newQuestionRef = dbRef.push();
       const newQuestion = {
@@ -103,6 +153,7 @@ const UploadForm = () => {
       };
       await newQuestionRef.set(newQuestion);
     }
+
     // Get the latest uploaded data from Firebase
     dbRef.limitToLast(1).once("value", (snapshot) => {
       const latest = snapshot.val();
@@ -228,7 +279,6 @@ const UploadForm = () => {
 
         {error && <p className="errorMsg">{error}</p>}
       </form>
-      {/* <MyComponent timesUsed={timesUsed} timesRemaining={timesRemaining} totalLimit={totalLimit} /> */}
     </>
   );
 };

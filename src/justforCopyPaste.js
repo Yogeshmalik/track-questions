@@ -1,465 +1,677 @@
-// import { QuestionForm, Question, QuestionStats } from "./components";
-// import { initializeApp } from "firebase/app";
-// import {
-//   getFirestore,
-//   collection,
-//   doc,
-//   update,
-//   add,
-//   getDocs,
-//   deleteDoc,
-// } from "firebase/firestore";
+my latest updated github repo for reference: https://github.com/Yogeshmalik/track-questions 
+my firebase realtime database: https://console.firebase.google.com/u/1/project/track-questions/database/track-questions-default-rtdb/data/~2F
 
-// import React, { useEffect, useState } from "react";
-// import firebase from "firebase/compat/app";
-// import "firebase/compat/firestore";
-// import "./QuestionList.css";
+i did not ask for the explanation, i asked to re-write(nothing else) the final updated UploadForm.js components using the following instructions: 
 
-// const QuestionList = () => {
-//   const [questions, setQuestions] = useState([]);
-//   const [options, setOptions] = useState([]);
-//   const [totalLimit, setTotalLimit] = useState(100);
-//   const [timesUsed, setTimesUsed] = useState(0);
-//   const [timesRemaining, setTimesRemaining] = useState(totalLimit);
-//   const [loading, setLoading] = useState(true);
+import React, { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import firebase from "firebase/compat/app";
+import "firebase/compat/database";
+import { dbRef, firebaseConfig } from "./firebaseConfig";
+import Papa from "papaparse";
+const UploadForm = () => {
+  const [file, setFile] = useState(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState(null);
+  const [userData, setUserData] = useState({
+    question: "",
+    options: { option1: "", option2: "", option3: "", option4: "" },
+    timesUsed: "",
+    timesRemaining: "",
+    totalLimit: "",
+  });
+  const [latestData, setLatestData] = useState({});
+  // const [totalLimit, setTotalLimit] = useState(100);
 
-//   useEffect(() => {
-//     const unsubscribe = firebase
-//       .firestore()
-//       .collection("questions")
-//       .onSnapshot(
-//         (snapshot) => {
-//           const questionsData = snapshot.docs.map((doc) => ({
-//             id: doc.id,
-//             ...doc.data(),
-//           }));
-//           setQuestions(questionsData);
-//           setOptions(questionsData.map((question) => question.options));
-//           setTimesUsed(
-//             questionsData.reduce(
-//               (sum, question) => sum + (100 - question.remainingUsage),
-//               0
-//             )
-//           );
-//           setTimesRemaining(
-//             totalLimit -
-//               questionsData.reduce(
-//                 (sum, question) => sum + (100 - question.remainingUsage),
-//                 0
-//               )
-//           );
-//           setLoading(false);
-//         },
-//         (error) => {
-//           console.error(error);
-//           setLoading(false);
-//         }
-//       );
+  const newQuestion = async () => {
+    try {
+      const newQuestionRef = dbRef.child("questions").push();
+      const newQuestion = {
+        question: userData.question.trim(),
+        option1: userData.options.option1.trim(),
+        option2: userData.options.option2.trim(),
+        option3: userData.options.option3.trim(),
+        option4: userData.options.option4.trim(),
+        timesUsed: 0,
+        timesRemaining: parseInt(userData.timesRemaining),
+        totalLimit: parseInt(userData.totalLimit),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      await newQuestionRef.set(newQuestion);
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        timesUsed: "",
+        timesRemaining: "",
+        totalLimit: "",
+      });
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading question. Please try again.");
+    }
+  };
 
-//     const fetchQuestions = async () => {
-//       try {
-//         const snapshot = await firebase
-//           .firestore()
-//           .collection("questions")
-//           .get();
-//         const questionsData = snapshot.docs.map((doc) => ({
-//           id: doc.id,
-//           ...doc.data(),
-//         }));
-//         setQuestions(questionsData);
-//         setOptions(questionsData.map((question) => question.options));
-//         setTimesUsed(
-//           questionsData.reduce(
-//             (sum, question) => sum + (100 - question.remainingUsage),
-//             0
-//           )
-//         );
-//         setTimesRemaining(
-//           totalLimit -
-//             questionsData.reduce(
-//               (sum, question) => sum + (100 - question.remainingUsage),
-//               0
-//             )
-//         );
-//       } catch (error) {
-//         console.error(error);
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
+  const onDrop = useCallback((acceptedFiles) => {
+    setFile(acceptedFiles[0]);
+  }, []);
 
-//     if (totalLimit) {
-//       fetchQuestions();
-//     }
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-//     return () => unsubscribe();
-//   }, [totalLimit]);
+  const handleTextChange = (event) => {
+    setText(event.target.value);
+  };
 
-//   const handleSetTotalLimit = (limit) => {
-//     setTotalLimit(limit);
-//   };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError(null);
+    let questions;
+    if (file) {
+      questions = await parseFile(file);
+    } else {
+      questions = [
+        {
+          text: userData.question.trim(),
+          options: [
+            userData.options.option1.trim(),
+            userData.options.option2.trim(),
+            userData.options.option3.trim(),
+            userData.options.option4.trim(),
+          ],
+          remainingUsage: parseInt(userData.timesRemaining),
+          lastUsed: null,
+        },
+      ];
+    }
+    try {
+      await uploadQuestions(questions);
+      await newQuestion();
+      await uploadUserData();
+      alert("Questions uploaded successfully!");
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading questions. Please try again.");
+    }
+  };
 
-//   const Option = ({ index, option, onDelete }) => {
-//     return (
-//       <div className="option">
-//         <p>{option}</p>
-//         <button onClick={onDelete}>Delete</button>
-//       </div>
-//     );
-//   };
+  const parseFile = async (file) => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = (event) => {
+        const content = event.target.result;
+        let questions;
+        if (file.name.endsWith(".csv")) {
+          questions = parseCSV(content);
+        } else {
+          questions = parseText(content);
+        }
+        resolve(questions);
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
+      reader.readAsText(file);
+    });
+  };
 
-//   const Question = ({ question, index, onDelete, onOptionSubmit }) => {
-//     return (
-//       <div className="question">
-//         <h3>{question.question}</h3>
-//         <p>{question.answer}</p>
-//         <div className="options">
-//           {question.options.map((option, optionIndex) => (
-//             <Option
-//               key={optionIndex}
-//               index={optionIndex}
-//               option={option}
-//               onDelete={() => onDelete(index, optionIndex, question.id)}
-//             />
-//           ))}
-//           <OptionForm
-//             index={index}
-//             onSubmit={(option) => onOptionSubmit(index, option, question.id)}
-//           />
-//         </div>
-//       </div>
-//     );
-//   };
+  const parseCSV = (text) => {
+    const results = Papa.parse(text, { header: true });
+    return results.data.map((item) => {
+      return {
+        text: item.question,
+        options: [item.option1, item.option2, item.option3, item.option4],
+        remainingUsage: 100,
+        lastUsed: null,
+      };
+    });
+  };
 
-//   const OptionForm = ({ index, onSubmit }) => {
-//     const [option, setOption] = useState("");
+  const parseText = (text) => {
+    const lines = text.trim().split("\n");
+    const questions = lines.map((line) => {
+      const [questionText, ...options] = line.trim().split(",");
+      return {
+        text: questionText.trim(),
+        options: options.map((option) => option.trim()),
+        remainingUsage: 100,
+        lastUsed: null,
+      };
+    });
+    return questions;
+  };
 
-//     const handleSubmit = (event) => {
-//       event.preventDefault();
-//       onSubmit(option);
-//       setOption("");
-//     };
+  const uploadQuestions = async (questions) => {
+    const dbRef = firebase.database().ref("questions");
 
-//     return (
-//       <form onSubmit={handleSubmit}>
-//         <input
-//           type="text"
-//           value={option}
-//           onChange={(event) => setOption(event.target.value)}
-//           placeholder="Enter option"
-//           required
-//         />
-//         <button type="submit">Add Option</button>
-//       </form>
-//     );
-//   };
+    for (const question of questions) {
+      const newQuestionRef = dbRef.push();
+      const newQuestion = {
+        question: question.text,
+        option1: question.options[0],
+        option2: question.options[1],
+        option3: question.options[2],
+        option4: question.options[3],
+        timesUsed: question.lastUsed ? 1 : 0,
+        timesRemaining: question.remainingUsage,
+        totalLimit: 100,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      await newQuestionRef.set(newQuestion);
+    }
 
-//   const handleQuestionSelect = async (questionId) => {
-//     const db = firebase.firestore();
-//     const questionRef = db.collection("questions").doc(questionId);
-//     try {
-//       const question = await questionRef.get();
-//       if (question.exists) {
-//         const data = question.data();
-//         if (data.remainingUsage > 0) {
-//           const remainingUsage = data.remainingUsage - 1;
-//           const lastUsed = new Date().toISOString();
-//           await questionRef.update({ remainingUsage, lastUsed });
-//           setQuestions((prevQuestions) =>
-//             prevQuestions.map((prevQuestion) =>
-//               prevQuestion.id === questionId
-//                 ? { ...prevQuestion, remainingUsage, lastUsed }
-//                 : prevQuestion
-//             )
-//           );
-//           setTimesUsed(timesUsed + 1);
-//           setTimesRemaining(timesRemaining - 1);
-//         } else {
-//           alert("Question has already been used 100 times.");
-//         }
-//       } else {
-//         alert("Question not found.");
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       alert("Error updating question.");
-//     }
-//   };
+    // Get the latest uploaded data from Firebase
+    dbRef.limitToLast(1).once("value", (snapshot) => {
+      const latest = snapshot.val();
+      if (latest) {
+        setLatestData(latest[Object.keys(latest)[0]]);
+      }
+    });
+  };
 
-//   const handleQuestionSubmit = async (newQuestion) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionRef = await db.collection("questions").add(newQuestion);
-//       setQuestions((prevQuestions) => [
-//         ...prevQuestions,
-//         { id: questionRef.id, ...newQuestion },
-//       ]);
-//       setOptions([...options, []]);
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
+  const uploadUserData = async () => {
+    try {
+      const userDataRef = dbRef.child("userData");
+      const snapshot = await userDataRef.once("value");
+      const userData = snapshot.val() || {};
+      const newUserData = {
+        ...userData,
+        [latestData.text]: {
+          option1: latestData.options[0],
+          option2: latestData.options[1],
+          option3: latestData.options[2],
+          option4: latestData.options[3],
+          timesUsed: latestData.lastUsed ? 1 : 0,
+          timesRemaining: latestData.remainingUsage,
+          totalLimit: 100,
+        },
+      };
+      await userDataRef.set(newUserData);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-//   const handleQuestionDelete = async (index, questionId) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionRef = db.collection("questions").doc(questionId);
-//       await questionRef.delete(); // delete the document from the collection
-//       setQuestions((prevQuestions) =>
-//         prevQuestions.filter((_, i) => i !== index)
-//       );
-//       setOptions((prevOptions) => prevOptions.filter((_, i) => i !== index));
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
+  const handleOptionChange = (optionNumber) => (event) => {
+    setUserData({
+      ...userData,
+      options: {
+        ...userData.options,
+        [`option${optionNumber}`]: event.target.value,
+      },
+    });
+  };
 
-//   const handleOptionSubmit = async (questionIndex, newOption) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionId = questions[questionIndex].id;
-//       const questionRef = db.collection("questions").doc(questionId);
-//       const options = [...questions[questionIndex].options, newOption];
-//       await questionRef.update({ options });
-//       setQuestions((prevQuestions) =>
-//         prevQuestions.map((prevQuestion, index) =>
-//           index === questionIndex ? { ...prevQuestion, options } : prevQuestion
-//         )
-//       );
-//       setOptions((prevOptions) =>
-//         prevOptions.map((prevQuestionOptions, index) =>
-//           index === questionIndex
-//             ? [...prevQuestionOptions, newOption]
-//             : prevQuestionOptions
-//         )
-//       );
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
+  const handleNumericChange = (name) => (event) => {
+    setUserData({ ...userData, [name]: event.target.value });
+  };
 
-//   const handleOptionDelete = async (index, optionIndex, questionId) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionRef = db.collection("questions").doc(questionId);
-//       const question = await questionRef.get();
-//       if (question.exists) {
-//         const options = question.data().options;
-//         options[index].splice(optionIndex, 1);
-//         await questionRef.update({ options });
-//         setOptions(
-//           options.map((option, i) =>
-//             i === index ? [...option] : [...options[i]]
-//           )
-//         );
-//       } else {
-//         alert("Question not found.");
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       alert("Error updating question.");
-//     }
-//   };
-//   const QuestionForm = ({ onQuestionSubmit }) => {
-//     const [question, setQuestion] = useState("");
-//     const [answer, setAnswer] = useState("");
+  return (
+    <>
+      <form onSubmit={handleSubmit}>
+        <div {...getRootProps()}>
+          <input {...getInputProps()} />
+          <p className="drag-drop-select">
+            Drag and drop a file here, or click HERE to select a file
+          </p>
+        </div>
+        <textarea
+          placeholder="ENTER YOUR QUESTION HERE..."
+          className="inputarea"
+          value={text}
+          onChange={handleTextChange}
+        />
+        <div className="options-container">
+          <label>
+            Option 1:
+            <input
+              type="text"
+              value={userData.options.option1}
+              onChange={handleOptionChange(1)}
+            />
+          </label>
+          <label>
+            Option 2:
+            <input
+              type="text"
+              value={userData.options.option2}
+              onChange={handleOptionChange(2)}
+            />
+          </label>
+          <label>
+            Option 3:
+            <input
+              type="text"
+              value={userData.options.option3}
+              onChange={handleOptionChange(3)}
+            />
+          </label>
+          <label>
+            Option 4:
+            <input
+              type="text"
+              value={userData.options.option4}
+              onChange={handleOptionChange(4)}
+            />
+          </label>
+        </div>
+        <div className="numeric-inputs-container">
+          <label>
+            Times used:
+            <input
+              type="number"
+              value={userData.timesUsed}
+              onChange={handleNumericChange("timesUsed")}
+            />
+          </label>
+          <label>
+            Times remaining:
+            <input
+              type="number"
+              value={userData.timesRemaining}
+              onChange={handleNumericChange("timesRemaining")}
+            />
+          </label>
+          <label>
+            Total limit:
+            <input
+              type="number"
+              value={userData.totalLimit}
+              onChange={handleNumericChange("totalLimit")}
+            />
+          </label>
+        </div>
+        <button type="submit">UPLOAD</button>
 
-//     const handleSubmit = (event) => {
-//       event.preventDefault();
-//       onQuestionSubmit({ question, answer, options: [], remainingUsage: 100 });
-//       setQuestion("");
-//       setAnswer("");
-//     };
+        {error && <p className="errorMsg">{error}</p>}
+      </form>
+    </>
+  );
+};
 
-//     return (
-//       <form onSubmit={handleSubmit}>
-//         <input
-//           type="text"
-//           value={question}
-//           onChange={(event) => setQuestion(event.target.value)}
-//           placeholder="Enter question"
-//           required
-//         />
-//         <input
-//           type="text"
-//           value={answer}
-//           onChange={(event) => setAnswer(event.target.value)}
-//           placeholder="Enter answer"
-//           required
-//         />
-//         <button type="submit">Add Question</button>
-//       </form>
-//     );
-//   };
+export default UploadForm;
 
-//   const QuestionStats = () => {
-//     return (
-//       <div className="question-stats">
-//         <p>Total questions used: {timesUsed}</p>
-//         <p>Questions remaining: {timesRemaining}</p>
-//         <div className="limit-input">
-//           <p>Set usage limit:</p>
-//           <input
-//             type="number"
-//             value={totalLimit}
-//             onChange={(event) =>
-//               handleSetTotalLimit(parseInt(event.target.value))
-//             }
-//           />
-//         </div>
-//       </div>
-//     );
-//   };
+the above code is not uploading the questions(and other things) to firebase database and later not retrieving the latest uploaded question under the form. modify the code and make it work. Just write the final updated code for UploadForm.js without explanation. Im giving you generated code, finish the code without reapeating whats already written:
 
-//   return (
-//     <div className="question-list">
-//       {loading ? (
-//         <p>Loading questions...</p>
-//       ) : (
-//         <>
-//           <h1>Question List</h1>
-//           <p>Times used: {timesUsed}</p>
-//           <p>Times remaining: {timesRemaining}</p>
-//           <button onClick={() => handleSetTotalLimit(50)}>
-//             Set total limit to 50
-//           </button>
-//           <button onClick={() => handleSetTotalLimit(100)}>
-//             Set total limit to 100
-//           </button>
-//           <QuestionStats
-//             totalLimit={totalLimit}
-//             timesUsed={timesUsed}
-//             timesRemaining={timesRemaining}
-//           />
+const UploadForm = () => {
+  const [file, setFile] = useState(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState(null);
+  const [userData, setUserData] = useState({
+    question: "",
+    options: { option1: "", option2: "", option3: "", option4: "" },
+    timesUsed: "",
+    timesRemaining: "",
+    totalLimit: "",
+  });
+  const [latestData, setLatestData] = useState({});
 
-//           <ul>
-//             {questions.map((question, index) => (
-//               <Question
-//                 key={question.id}
-//                 question={question}
-//                 options={options[index]}
-//                 onSelect={() => handleQuestionSelect(question.id)}
-//                 onDelete={() => handleQuestionDelete(index, question.id)}
-//                 onOptionDelete={handleOptionDelete}
-//               >
-//                 <QuestionForm
-//                   onSubmit={(newOption) => handleOptionSubmit(index, newOption)}
-//                 />
-//               </Question>
-//             ))}
-//           </ul>
-//           <QuestionForm onSubmit={handleQuestionSubmit} />
-//         </>
-//       )}
-//     </div>
-//   );
-// };
+  const newQuestion = async () => {
+    try {
+      const newQuestionRef = dbRef.child("questions").push();
+      const newQuestion = {
+        question: userData.question.trim(),
+        option1: userData.options.option1.trim(),
+        option2: userData.options.option2.trim(),
+        option3: userData.options.option3.trim(),
+        option4: userData.options.option4.trim(),
+        timesUsed: 0,
+        timesRemaining: parseInt(userData.timesRemaining),
+        totalLimit: parseInt(userData.totalLimit),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
+      await newQuestionRef.set(newQuestion);
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        timesUsed: "",
+        timesRemaining: "",
+        totalLimit: "",
+      });
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading question. Please try again.");
+    }
+  };
 
-// export default QuestionList;
+  const onDrop = useCallback((acceptedFiles) => {
+    setFile(acceptedFiles[0]);
+  }, []);
 
-// smaller with less functionality
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
-// import React, { useEffect, useState } from "react";
-// import firebase from "firebase/compat/app";
-// import "firebase/compat/firestore";
-// import "./QuestionList.css";
+  const handleTextChange = (event) => {
+    setText(event.target.value);
+  };
 
-// const QuestionList = () => {
-//   const [questions, setQuestions] = useState([]);
-//   const [loading, setLoading] = useState(true);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError(null);
+    let questions;
+    if (file) {
+      questions = await parseFile(file);
+    } else {
+      questions = [
+        {
+          question: userData.question.trim(), /* text was replaced by question (text: user...) */
+          options: [
+            userData.options.option1.trim(),
+            userData.options.option2.trim(),
+            userData.options.option3.trim(),
+            userData.options.option4.trim(),
+          ],
+          remainingUsage: parseInt(userData.timesRemaining),
+          lastUsed: null,
+        },
+      ];
+    }
+    try {
+      await uploadQuestions(questions);
+      await newQuestion();
+      await uploadUserData();
+      alert("Questions uploaded successfully!");
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading questions. Please try again.");
+    }
+  };
 
-//   useEffect(() => {
-//     const unsubscribe = firebase
-//       .firestore()
-//       .collection("questions")
-//       .onSnapshot((snapshot) => {
-//         const questionsData = snapshot.docs.map((doc) => ({
-//           id: doc.id,
-//           ...doc.data(),
-//         }));
-//         setQuestions(questionsData);
-//         setLoading(false);
-//       });
+  const parseFile = async (file) => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = (event) => {
+        const content = event.target.result;
+        let questions;
+        if (file.name.endsWith(".csv")) {
+          questions = parseCSV(content);
+        } else {
+          questions = parseText(content);
+        }
+        resolve(questions);
+      };
+      reader.onerror = () => {
+        reject(new Error("Failed to read file"));
+      };
+      reader.readAsText(file);
+    });
+  };
+const parseCSV = (text) => {
+  const results = Papa.parse(text, { header: true });
+  return results.data.map((item) => {
+    return {
+      question: item.question.trim(),
+options: [
+item.option1.trim(),
+item.option2.trim(),
+item.option3.trim(),
+item.option4.trim(),
+],
+remainingUsage: parseInt(item.remainingUsage),
+lastUsed: null,
+};
+});
+};
 
-//     return () => unsubscribe();
-//   }, []);
+const parseText = (text) => {
+const questions = text
+.split(/\r?\n/)
+.filter((line) => line.trim())
+.map((line) => {
+const [question, option1, option2, option3, option4, remainingUsage] =
+line.split("|").map((item) => item.trim());
+return {
+question: question.trim(),
+options: [option1.trim(), option2.trim(), option3.trim(), option4.trim()],
+remainingUsage: parseInt(remainingUsage),
+lastUsed: null,
+};
+});
+return questions;
+};
 
-//   const handleQuestionSelect = async (questionId) => {
-//     const db = firebase.firestore();
-//     const questionRef = db.collection("questions").doc(questionId);
-//     try {
-//       const question = await questionRef.get();
-//       if (question.exists) {
-//         const data = question.data();
-//         if (data.remainingUsage > 0) {
-//           const remainingUsage = data.remainingUsage - 1;
-//           const lastUsed = new Date().toISOString();
-//           await questionRef.update({ remainingUsage, lastUsed });
-//           setQuestions((prevQuestions) =>
-//             prevQuestions.map((prevQuestion) =>
-//               prevQuestion.id === questionId
-//                 ? { ...prevQuestion, remainingUsage, lastUsed }
-//                 : prevQuestion
-//             )
-//           );
-//         } else {
-//           alert("Question has already been used 100 times.");
-//         }
-//       } else {
-//         alert("Question not found.");
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       alert("Error updating question.");
-//     }
-//   };
+const uploadQuestions = async (questions) => {
+  try {
+    const questionsRef = dbRef.child("questions");
+    const updates = {};
+    questions.forEach((question) => {
+      const newQuestionRef = questionsRef.push();
+      updates[newQuestionRef.key] = question;
+    });
+    await questionsRef.update(updates);
+  } catch (error) {
+    console.error(error);
+    setError("Error uploading questions. Please try again.");
+  }
+  // Get the latest uploaded data from Firebase
+  dbRef.limitToLast(1).once("value", (snapshot) => {
+    const latest = snapshot.val();
+    if (latest) {
+      setLatestData(latest[Object.keys(latest)[0]]);
+    }
+  });
+};
 
-//   const handleQuestionSubmit = async (newQuestion) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionRef = await db.collection("questions").add(newQuestion);
-//       setQuestions((prevQuestions) => [
-//         ...prevQuestions,
-//         { id: questionRef.id, ...newQuestion },
-//       ]);
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
+const uploadUserData = async () => {
+  const userDataRef = firebase.database().ref("userData");
+  const newUserDataRef = userDataRef.push();
+  const newUserData = {
+    email: "",
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    latestQuestionId: latestData ? latestData.id : null,
+  };
+  await newUserDataRef.set(newUserData);
+};
 
-//   const handleQuestionDelete = async (questionId) => {
-//     try {
-//       const db = firebase.firestore();
-//       const questionRef = db.collection("questions").doc(questionId);
-//       await questionRef.delete();
-//       setQuestions((prevQuestions) =>
-//         prevQuestions.filter((prevQuestion) => prevQuestion.id !== questionId)
-//       );
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
+const handleInputChange = (event) => {
+  const { name, value } = event.target;
+  setUserData((prevUserData) => ({
+    ...prevUserData,
+    [name]: value.trim(),
+  }));
+};
 
-//   return (
-//     <div className="question-list">
-//       {loading && <p>Loading...</p>}
-//       {!loading && questions.length === 0 && <p>No questions found.</p>}
-//       {!loading &&
-//         questions.length > 0 &&
-//         questions.map((question) => (
-//           <div key={question.id} className="question">
-//             <h3>{question.question}</h3>
-//             <p>{question.answer}</p>
-//             <button onClick={() => handleQuestionSelect(question.id)}>
-//               Use Question
-//             </button>
-//             <button onClick={() => handleQuestionDelete(question.id)}>
-//               Delete Question
-//             </button>
-//           </div>
-//         ))}
-//     </div>
-//   );
-// };
+const handleOptionChange = (event) => {
+  const { name, value } = event.target;
+  setUserData((prevUserData) => ({
+    ...prevUserData,
+    options: {
+      ...prevUserData.options,
+      [name]: value.trim(),
+    },
+  }));
+};
+const handleNumericChange = (name) => (event) => {
+    setUserData({ ...userData, [name]: event.target.value });
+  };
 
-// export default QuestionList;
+  return (
+    <>
+      <form className="upload-form" onSubmit={handleSubmit}>
+      <h2>Upload Questions</h2>
+      <div className="dropzone-container" {...getRootProps()}>
+        <input {...getInputProps()} />
+        {file ? (
+          <p>{file.name}</p>
+        ) : (
+          <p className="drag-drop-select">
+            Drag and drop a file here, or click HERE to select a file
+          </p>
+          )}
+        </div>
+        <textarea
+          placeholder="ENTER YOUR QUESTION HERE..."
+          className="inputarea"
+          value={text}
+          onChange={handleTextChange}
+        />
+        <div className="options-container">
+          <label>
+            Option 1:
+            <input
+              type="text"
+              value={userData.options.option1}
+              onChange={handleOptionChange(1)}
+            />
+          </label>
+          <label>
+            Option 2:
+            <input
+              type="text"
+              value={userData.options.option2}
+              onChange={handleOptionChange(2)}
+            />
+          </label>
+          <label>
+            Option 3:
+            <input
+              type="text"
+              value={userData.options.option3}
+              onChange={handleOptionChange(3)}
+            />
+          </label>
+          <label>
+            Option 4:
+            <input
+              type="text"
+              value={userData.options.option4}
+              onChange={handleOptionChange(4)}
+            />
+          </label>
+        </div>
+        <div className="numeric-inputs-container">
+          <label>
+            Times used:
+            <input
+              type="number"
+              value={userData.timesUsed}
+              onChange={handleNumericChange("timesUsed")}
+            />
+          </label>
+          <label>
+            Times remaining:
+            <input
+              type="number"
+              value={userData.timesRemaining}
+              onChange={handleNumericChange("timesRemaining")}
+            />
+          </label>
+          <label>
+            Total limit:
+            <input
+              type="number"
+              value={userData.totalLimit}
+              onChange={handleNumericChange("totalLimit")}
+            />
+          </label>
+        </div>
+        <button type="submit">UPLOAD</button>
+
+        {error && <p className="errorMsg">{error}</p>}
+        {/* the data entered below this line is unfinished and you must use chatg to finish it
+        and accordingly remove faaaltu things from the final return statement of UploadFrom */}
+        <div className="text-container">
+        <label htmlFor="question">Question</label>
+        <input
+          type="text"
+          id="question"
+          name="question"
+          value={userData.question}
+          onChange={(e) =>
+            setUserData({ ...userData, question: e.target.value })
+          }
+        />
+      </div>
+      <div className="options-container">
+        <div className="option">
+          <label htmlFor="option1">Option 1</label>
+          <input
+            type="text"
+            id="option1"
+            name="option1"
+            value={userData.options.option1}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option1: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="option">
+          <label htmlFor="option2">Option 2</label>
+          <input
+            type="text"
+            id="option2"
+            name="option2"
+            value={userData.options.option2}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option2: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="option">
+          <label htmlFor="option3">Option 3</label>
+          <input
+            type="text"
+            id="option3"
+            name="option3"
+            value={userData.options.option3}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option3: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="option">
+          <label htmlFor="option4">Option 4</label>
+          <input
+            type="text"
+            id="option4"
+            name="option4"
+            value={userData.options.option4}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option4: e.target.value },
+              })
+            }
+          />
+        </div>
+      </div>
+      <div className="usage-container">
+        <div className="times-used">
+          <label htmlFor="timesUsed">Times Used</label>
+          <input
+            type="text"
+            id="timesUsed"
+            name="timesUsed"
+            value={userData.timesUsed}
+            onChange={(e) =>
+              setUserData({ ...userData, timesUsed: e.target.value })
+            }
+          />
+        </div>
+        <div className="times-remaining">
+          <label htmlFor="timesRemaining">Times Remaining</label>
+          <input
+            type="text"
+            id="timesRemaining"
+            name="timesRemaining"
+            value={userData.timesRemaining}
+            onChange={(e) =>
+              setUserData
+
+
+
+
+
+              
+      </form>
+    </>
+  );
+};
+
+export default UploadForm;
