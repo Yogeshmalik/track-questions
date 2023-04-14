@@ -48,7 +48,7 @@ body {
 .inputarea::placeholder {
   color: blue;
   text-align: center;
-  line-height: 40px;
+  line-height: 20px;
 }
 
 .inputarea {
@@ -58,7 +58,7 @@ body {
   justify-content: center;
   margin: 0 auto;
   margin-bottom: 12px;
-  height: 70px;
+  height: 40px;
   width: 99.5%;
   border-radius: 10px;
   padding: 10px;
@@ -70,7 +70,6 @@ body {
 .inputarea:hover {
   background-color: cornflowerblue;
   border: none;
-  padding-top: 12px;
 }
 
 button {

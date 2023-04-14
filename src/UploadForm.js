@@ -24,10 +24,10 @@ const UploadForm = () => {
       const newQuestionRef = dbRef.child("questions").push();
       const newQuestion = {
         question: userData.question.trim(),
-        option1: userData.options.option1.trim(),
-        option2: userData.options.option2.trim(),
-        option3: userData.options.option3.trim(),
-        option4: userData.options.option4.trim(),
+        option1: userData.options["option1"].trim(),
+        option2: userData.options["option2"].trim(),
+        option3: userData.options["option3"].trim(),
+        option4: userData.options["option4"].trim(),
         timesUsed: 0,
         timesRemaining: parseInt(userData.timesRemaining),
         totalLimit: parseInt(userData.totalLimit),
@@ -201,86 +201,225 @@ const UploadForm = () => {
   };
 
   return (
-    <>
+    <div>
       <form onSubmit={handleSubmit}>
-        <div {...getRootProps()}>
-          <input {...getInputProps()} />
-          <p className="drag-drop-select">
-            Drag and drop a file here, or click HERE to select a file
-          </p>
+        <div className="form-group">
+          <label htmlFor="fileUpload">Upload Questions from File</label>
+          <div {...getRootProps({ className: "dropzone" })}>
+            <input {...getInputProps()} />
+            {file ? (
+              <p>File: {file.name}</p>
+            ) : (
+              <p className="drag-drop-select">
+                Drag and drop a file here, or click to select a file. Only .txt
+                and .csv files are supported.
+              </p>
+            )}
+          </div>
         </div>
-        <textarea
-          placeholder="ENTER YOUR QUESTION HERE..."
-          className="inputarea"
-          value={text}
-          onChange={handleTextChange}
-        />
-        <div className="options-container">
-          <label>
-            Option 1:
-            <input
-              type="text"
-              value={userData.options.option1}
-              onChange={handleOptionChange(1)}
-            />
-          </label>
-          <label>
-            Option 2:
-            <input
-              type="text"
-              value={userData.options.option2}
-              onChange={handleOptionChange(2)}
-            />
-          </label>
-          <label>
-            Option 3:
-            <input
-              type="text"
-              value={userData.options.option3}
-              onChange={handleOptionChange(3)}
-            />
-          </label>
-          <label>
-            Option 4:
-            <input
-              type="text"
-              value={userData.options.option4}
-              onChange={handleOptionChange(4)}
-            />
-          </label>
+        <div className="form-group">
+          <label htmlFor="question">Question Text</label>
+          <input
+            type="text"
+            className="form-control inputarea"
+            id="question"
+            placeholder="Enter Your Question Here..."
+            value={userData.question}
+            onChange={(e) =>
+              setUserData({ ...userData, question: e.target.value })
+            }
+          />
         </div>
-        <div className="numeric-inputs-container">
-          <label>
-            Times used:
-            <input
-              type="number"
-              value={userData.timesUsed}
-              onChange={handleNumericChange("timesUsed")}
-            />
-          </label>
-          <label>
-            Times remaining:
-            <input
-              type="number"
-              value={userData.timesRemaining}
-              onChange={handleNumericChange("timesRemaining")}
-            />
-          </label>
-          <label>
-            Total limit:
-            <input
-              type="number"
-              value={userData.totalLimit}
-              onChange={handleNumericChange("totalLimit")}
-            />
-          </label>
+        <div className="form-group">
+          <label htmlFor="option1">Option 1</label>
+          <input
+            type="text"
+            className="form-control inputarea"
+            id="option1"
+            placeholder="Enter Your Option Here..."
+            value={userData.options.option1}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option1: e.target.value },
+              })
+            }
+          />
         </div>
-        <button type="submit">UPLOAD</button>
+        <div className="form-group">
+          <label htmlFor="option2">Option 2</label>
+          <input
+            type="text"
+            className="form-control inputarea"
+            id="option2"
+            placeholder="Enter Your Option Here..."
+            value={userData.options.option2}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option2: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="option3">Option 3</label>
+          <input
+            type="text"
+            className="form-control inputarea"
+            id="option3"
+            placeholder="Enter Your Option Here..."
+            value={userData.options.option3}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option3: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="option4">Option 4</label>
+          <input
+            type="text"
+            className="form-control inputarea"
+            id="option4"
+            placeholder="Enter Your Option Here..."
+            value={userData.options.option4}
+            onChange={(e) =>
+              setUserData({
+                ...userData,
+                options: { ...userData.options, option4: e.target.value },
+              })
+            }
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="timesRemaining">Times Remaining</label>
+          <input
+            type="number"
+            className="form-control"
+            id="timesRemaining"
+            value={userData.timesRemaining}
+            onChange={(e) =>
+              setUserData({ ...userData, timesRemaining: e.target.value })
+            }
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="totalLimit">Total Limit</label>
+          <input
+            type="number"
+            className="form-control"
+            id="totalLimit"
+            value={userData.totalLimit}
+            onChange={(e) =>
+              setUserData({ ...userData, totalLimit: e.target.value })
+            }
+          />
+        </div>
 
-        {error && <p className="errorMsg">{error}</p>}
+        <div className="form-group">
+          <label htmlFor="textUpload">Upload Questions from Text</label>
+          <textarea
+            className="form-control inputarea"
+            placeholder="Type Here"
+            id="textUpload"
+            rows="3"
+            value={userData.text}
+            onChange={(e) => setUserData({ ...userData, text: e.target.value })}
+          ></textarea>
+          <button type="submit" className="btn btn-primary">
+            Submit
+          </button>
+        </div>
       </form>
-    </>
+    </div>
   );
 };
-
 export default UploadForm;
+
+//   return (
+//     <>
+//       <form onSubmit={handleSubmit}>
+//         <div {...getRootProps()}>
+//           <input {...getInputProps()} />
+//           <p className="drag-drop-select">
+//             Drag and drop a file here, or click HERE to select a file
+//           </p>
+//         </div>
+//         <textarea
+//           placeholder="ENTER YOUR QUESTION HERE..."
+//           className="inputarea"
+//           value={text}
+//           onChange={handleTextChange}
+//         />
+//         <div className="options-container">
+//           <label>
+//             Option 1:
+//             <input
+//               type="text"
+//               value={userData.options.option1}
+//               onChange={handleOptionChange(1)}
+//             />
+//           </label>
+//           <label>
+//             Option 2:
+//             <input
+//               type="text"
+//               value={userData.options.option2}
+//               onChange={handleOptionChange(2)}
+//             />
+//           </label>
+//           <label>
+//             Option 3:
+//             <input
+//               type="text"
+//               value={userData.options.option3}
+//               onChange={handleOptionChange(3)}
+//             />
+//           </label>
+//           <label>
+//             Option 4:
+//             <input
+//               type="text"
+//               value={userData.options.option4}
+//               onChange={handleOptionChange(4)}
+//             />
+//           </label>
+//         </div>
+//         <div className="numeric-inputs-container">
+//           <label>
+//             Times used:
+//             <input
+//               type="number"
+//               value={userData.timesUsed}
+//               onChange={handleNumericChange("timesUsed")}
+//             />
+//           </label>
+//           <label>
+//             Times remaining:
+//             <input
+//               type="number"
+//               value={userData.timesRemaining}
+//               onChange={handleNumericChange("timesRemaining")}
+//             />
+//           </label>
+//           <label>
+//             Total limit:
+//             <input
+//               type="number"
+//               value={userData.totalLimit}
+//               onChange={handleNumericChange("totalLimit")}
+//             />
+//           </label>
+//         </div>
+//         <button type="submit">UPLOAD</button>
+
+//         {error && <p className="errorMsg">{error}</p>}
+//       </form>
+//     </>
+//   );
+// };
+
+// export default UploadForm;
