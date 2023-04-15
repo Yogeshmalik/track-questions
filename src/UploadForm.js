@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import firebase from "firebase/compat/app";
 import "firebase/compat/database";
@@ -15,9 +15,29 @@ const UploadForm = () => {
     timesUsed: "",
     timesRemaining: "",
     totalLimit: "",
+    comment: "", // added comment field to userData state
   });
   const [latestData, setLatestData] = useState({});
   // const [totalLimit, setTotalLimit] = useState(100);
+
+  const onDrop = useCallback((acceptedFiles) => {
+    const file = acceptedFiles[0];
+    setFile(file);
+    parseFile(file);
+  }, []);
+
+  useEffect(() => {
+    const questionsRef = dbRef.child("questions");
+    questionsRef.on("value", (snapshot) => {
+      const questions = [];
+      snapshot.forEach((childSnapshot) => {
+        const question = childSnapshot.val();
+        question.id = childSnapshot.key;
+        questions.push(question);
+      });
+      setLatestData(questions[questions.length - 1]); // get the last item in the array
+    });
+  }, []);
 
   const newQuestion = async () => {
     try {
@@ -32,6 +52,8 @@ const UploadForm = () => {
         timesRemaining: parseInt(userData.timesRemaining),
         totalLimit: parseInt(userData.totalLimit),
         createdAt: firebase.database.ServerValue.TIMESTAMP,
+        comment: userData.comment.trim(),
+        text: text.trim(), // add the text property to the newQuestion object
       };
       await newQuestionRef.set(newQuestion);
       setUserData({
@@ -40,21 +62,74 @@ const UploadForm = () => {
         timesUsed: "",
         timesRemaining: "",
         totalLimit: "",
+        comment: "",
       });
+      setText(""); // clear the text state
     } catch (error) {
       console.error(error);
       setError("Error uploading question. Please try again.");
     }
   };
 
-  const onDrop = useCallback((acceptedFiles) => {
-    setFile(acceptedFiles[0]);
-  }, []);
-
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   const handleTextChange = (event) => {
     setText(event.target.value);
+  };
+
+  const handleQuestionChange = (event) => {
+    // update userData state with the new value of the question input
+    setUserData((prevState) => ({
+      ...prevState,
+      question: event.target.value,
+    }));
+  };
+
+  const handleOptionChange = (event) => {
+    // update userData state with the new value of the option inputs
+    setUserData((prevState) => ({
+      ...prevState,
+      options: {
+        ...prevState.options,
+        [event.target.name]: event.target.value,
+      },
+    }));
+  };
+
+  const handleTimesUsedChange = (event) => {
+    // update userData state with the new value of the timesUsed input
+    setUserData((prevState) => ({
+      ...prevState,
+      timesUsed: event.target.value,
+    }));
+  };
+
+  const handleTimesRemainingChange = (event) => {
+    // update userData state with the new value of the timesRemaining input
+    setUserData((prevState) => ({
+      ...prevState,
+      timesRemaining: event.target.value,
+    }));
+  };
+
+  const handleTotalLimitChange = (event) => {
+    // update userData state with the new value of the totalLimit input
+    setUserData((prevState) => ({
+      ...prevState,
+      totalLimit: event.target.value,
+    }));
+  };
+
+  const handleCommentChange = (event) => {
+    // update userData state with the new value of the comment input
+    setUserData((prevState) => ({
+      ...prevState,
+      comment: event.target.value,
+    }));
+  };
+
+  const handleNumericChange = (name) => (event) => {
+    setUserData({ ...userData, [name]: event.target.value });
   };
 
   const handleSubmit = async (event) => {
@@ -82,6 +157,15 @@ const UploadForm = () => {
       await uploadQuestions(questions);
       await newQuestion();
       await uploadUserData();
+      setFile(null); // clear the file state
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        timesUsed: "",
+        timesRemaining: "",
+        totalLimit: "",
+        comment: "",
+      }); // reset the userData state
       alert("Questions uploaded successfully!");
     } catch (error) {
       console.error(error);
@@ -92,7 +176,7 @@ const UploadForm = () => {
   const parseFile = async (file) => {
     const reader = new FileReader();
     return new Promise((resolve, reject) => {
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const content = event.target.result;
         let questions;
         if (file.name.endsWith(".csv")) {
@@ -100,7 +184,14 @@ const UploadForm = () => {
         } else {
           questions = parseText(content);
         }
-        resolve(questions);
+        try {
+          await uploadQuestions(questions);
+          alert("Questions uploaded successfully!");
+          resolve(questions);
+        } catch (error) {
+          console.error(error);
+          reject(new Error("Error uploading questions. Please try again."));
+        }
       };
       reader.onerror = () => {
         reject(new Error("Failed to read file"));
@@ -111,14 +202,20 @@ const UploadForm = () => {
 
   const parseCSV = (text) => {
     const results = Papa.parse(text, { header: true });
-    return results.data.map((item) => {
-      return {
-        text: item.question,
-        options: [item.option1, item.option2, item.option3, item.option4],
-        remainingUsage: 100,
-        lastUsed: null,
-      };
-    });
+    return results.data.map((parsedQuestion) => ({
+      question: parsedQuestion.question.trim(),
+      options: [
+        parsedQuestion.option1.trim(),
+        parsedQuestion.option2.trim(),
+        parsedQuestion.option3.trim(),
+        parsedQuestion.option4.trim(),
+      ],
+      timesUsed: 0,
+      timesRemaining: 100,
+      totalLimit: null,
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      comment: "",
+    }));
   };
 
   const parseText = (text) => {
@@ -126,10 +223,13 @@ const UploadForm = () => {
     const questions = lines.map((line) => {
       const [questionText, ...options] = line.trim().split(",");
       return {
-        text: questionText.trim(),
+        question: questionText.trim(),
         options: options.map((option) => option.trim()),
-        remainingUsage: 100,
-        lastUsed: null,
+        timesUsed: 0,
+        timesRemaining: 100,
+        totalLimit: null,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        comment: "",
       };
     });
     return questions;
@@ -186,20 +286,6 @@ const UploadForm = () => {
     }
   };
 
-  const handleOptionChange = (optionNumber) => (event) => {
-    setUserData({
-      ...userData,
-      options: {
-        ...userData.options,
-        [`option${optionNumber}`]: event.target.value,
-      },
-    });
-  };
-
-  const handleNumericChange = (name) => (event) => {
-    setUserData({ ...userData, [name]: event.target.value });
-  };
-
   return (
     <div>
       <form onSubmit={handleSubmit}>
@@ -223,11 +309,10 @@ const UploadForm = () => {
             type="text"
             className="form-control inputarea"
             id="question"
+            name="question"
             placeholder="Enter Your Question Here..."
             value={userData.question}
-            onChange={(e) =>
-              setUserData({ ...userData, question: e.target.value })
-            }
+            onChange={handleQuestionChange}
           />
         </div>
         <div className="form-group">
@@ -236,14 +321,10 @@ const UploadForm = () => {
             type="text"
             className="form-control inputarea"
             id="option1"
+            name="option1"
             placeholder="Enter Your Option Here..."
             value={userData.options.option1}
-            onChange={(e) =>
-              setUserData({
-                ...userData,
-                options: { ...userData.options, option1: e.target.value },
-              })
-            }
+            onChange={handleOptionChange}
           />
         </div>
         <div className="form-group">
@@ -252,14 +333,10 @@ const UploadForm = () => {
             type="text"
             className="form-control inputarea"
             id="option2"
+            name="option2"
             placeholder="Enter Your Option Here..."
             value={userData.options.option2}
-            onChange={(e) =>
-              setUserData({
-                ...userData,
-                options: { ...userData.options, option2: e.target.value },
-              })
-            }
+            onChange={handleOptionChange}
           />
         </div>
         <div className="form-group">
@@ -268,14 +345,10 @@ const UploadForm = () => {
             type="text"
             className="form-control inputarea"
             id="option3"
+            name="option3"
             placeholder="Enter Your Option Here..."
             value={userData.options.option3}
-            onChange={(e) =>
-              setUserData({
-                ...userData,
-                options: { ...userData.options, option3: e.target.value },
-              })
-            }
+            onChange={handleOptionChange}
           />
         </div>
         <div className="form-group">
@@ -284,14 +357,20 @@ const UploadForm = () => {
             type="text"
             className="form-control inputarea"
             id="option4"
+            name="option4"
             placeholder="Enter Your Option Here..."
             value={userData.options.option4}
-            onChange={(e) =>
-              setUserData({
-                ...userData,
-                options: { ...userData.options, option4: e.target.value },
-              })
-            }
+            onChange={handleOptionChange}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="timesUsed">Times Used</label>
+          <input
+            type="number"
+            className="form-control"
+            id="timesUsed"
+            value={userData.timesUsed}
+            onChange={handleTimesUsedChange}
           />
         </div>
         <div className="form-group">
@@ -301,9 +380,7 @@ const UploadForm = () => {
             className="form-control"
             id="timesRemaining"
             value={userData.timesRemaining}
-            onChange={(e) =>
-              setUserData({ ...userData, timesRemaining: e.target.value })
-            }
+            onChange={handleTimesRemainingChange}
           />
         </div>
         <div className="form-group">
@@ -313,113 +390,86 @@ const UploadForm = () => {
             className="form-control"
             id="totalLimit"
             value={userData.totalLimit}
-            onChange={(e) =>
-              setUserData({ ...userData, totalLimit: e.target.value })
-            }
+            onChange={handleTotalLimitChange}
           />
         </div>
-
         <div className="form-group">
-          <label htmlFor="textUpload">Upload Questions from Text</label>
+          <label htmlFor="textUpload">Your Comments:</label>
+          <textarea
+            name="text"
+            id="text"
+            className="form-control inputarea"
+            placeholder="Type your question here..."
+            value={text}
+            onChange={handleTextChange} // add the onChange prop
+          />
           <textarea
             className="form-control inputarea"
-            placeholder="Type Here"
+            placeholder="Enter Your Comments Here"
             id="textUpload"
             rows="3"
             value={userData.text}
-            onChange={(e) => setUserData({ ...userData, text: e.target.value })}
-          ></textarea>
+            onChange={handleCommentChange}
+          />
           <button type="submit" className="btn btn-primary">
             Submit
           </button>
         </div>
+        {error && <p className="errorMsg">{error}</p>}
       </form>
+      <div className="latestUploaded">
+        <h3>Latest Uploaded Question:</h3>
+        <p>
+          {latestData[latestData.length - 1] &&
+            latestData[latestData.length - 1].question}
+          Test
+        </p>
+        <p>
+          {latestData.length > 0
+            ? latestData[latestData.length - 1].question
+            : ""}
+        </p>
+        <h3>Options:</h3>
+        <ul>
+          <li>
+            {latestData[latestData.length - 1] &&
+              latestData[latestData.length - 1].option1}
+          </li>
+          <li>
+            {latestData[latestData.length - 1] &&
+              latestData[latestData.length - 1].option2}
+          </li>
+          <li>
+            {latestData[latestData.length - 1] &&
+              latestData[latestData.length - 1].option3}
+          </li>
+          <li>
+            {latestData[latestData.length - 1] &&
+              latestData[latestData.length - 1].option4}
+          </li>
+        </ul>
+        <h3>Times Used:</h3>
+        <p>
+          {latestData[latestData.length - 1] &&
+            latestData[latestData.length - 1].timesUsed}
+        </p>
+        <h3>Times Remaining:</h3>
+        <p>
+          {latestData[latestData.length - 1] &&
+            latestData[latestData.length - 1].timesRemaining}
+        </p>
+        <h3>Total Limit:</h3>
+        <p>
+          {latestData[latestData.length - 1] &&
+            latestData[latestData.length - 1].totalLimit}
+        </p>
+        <h3>Comment:</h3>
+        <p>
+          {latestData[latestData.length - 1] &&
+            latestData[latestData.length - 1].comment}
+        </p>
+      </div>
     </div>
   );
 };
 export default UploadForm;
-
-//   return (
-//     <>
-//       <form onSubmit={handleSubmit}>
-//         <div {...getRootProps()}>
-//           <input {...getInputProps()} />
-//           <p className="drag-drop-select">
-//             Drag and drop a file here, or click HERE to select a file
-//           </p>
-//         </div>
-//         <textarea
-//           placeholder="ENTER YOUR QUESTION HERE..."
-//           className="inputarea"
-//           value={text}
-//           onChange={handleTextChange}
-//         />
-//         <div className="options-container">
-//           <label>
-//             Option 1:
-//             <input
-//               type="text"
-//               value={userData.options.option1}
-//               onChange={handleOptionChange(1)}
-//             />
-//           </label>
-//           <label>
-//             Option 2:
-//             <input
-//               type="text"
-//               value={userData.options.option2}
-//               onChange={handleOptionChange(2)}
-//             />
-//           </label>
-//           <label>
-//             Option 3:
-//             <input
-//               type="text"
-//               value={userData.options.option3}
-//               onChange={handleOptionChange(3)}
-//             />
-//           </label>
-//           <label>
-//             Option 4:
-//             <input
-//               type="text"
-//               value={userData.options.option4}
-//               onChange={handleOptionChange(4)}
-//             />
-//           </label>
-//         </div>
-//         <div className="numeric-inputs-container">
-//           <label>
-//             Times used:
-//             <input
-//               type="number"
-//               value={userData.timesUsed}
-//               onChange={handleNumericChange("timesUsed")}
-//             />
-//           </label>
-//           <label>
-//             Times remaining:
-//             <input
-//               type="number"
-//               value={userData.timesRemaining}
-//               onChange={handleNumericChange("timesRemaining")}
-//             />
-//           </label>
-//           <label>
-//             Total limit:
-//             <input
-//               type="number"
-//               value={userData.totalLimit}
-//               onChange={handleNumericChange("totalLimit")}
-//             />
-//           </label>
-//         </div>
-//         <button type="submit">UPLOAD</button>
-
-//         {error && <p className="errorMsg">{error}</p>}
-//       </form>
-//     </>
-//   );
-// };
-
-// export default UploadForm;

@@ -2,15 +2,7 @@ import React, { useEffect, useState } from "react";
 import firebase from "firebase/compat/app";
 import "firebase/compat/firestore";
 import "./QuestionList.css";
-import {
-  getFirestore,
-  collection,
-  doc,
-  update,
-  add,
-  getDocs,
-  deleteDoc,
-} from "firebase/firestore";
+
 const QuestionList = () => {
   const [questions, setQuestions] = useState([]);
   const [options, setOptions] = useState([]);
