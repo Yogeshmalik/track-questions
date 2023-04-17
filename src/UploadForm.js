@@ -2,7 +2,7 @@ import React, { useCallback, useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import firebase from "firebase/compat/app";
 import "firebase/compat/database";
-import { dbRef, firebaseConfig } from "./firebaseConfig";
+import { dbRef } from "./firebaseConfig";
 import Papa from "papaparse";
 
 const UploadForm = () => {
@@ -12,13 +12,11 @@ const UploadForm = () => {
   const [userData, setUserData] = useState({
     question: "",
     options: { option1: "", option2: "", option3: "", option4: "" },
-    timesUsed: "",
-    timesRemaining: "",
-    totalLimit: "",
-    comment: "", // added comment field to userData state
+    totalLimit: 100,
+    comment: "",
+    correctOption: "",
   });
   const [latestData, setLatestData] = useState({});
-  // const [totalLimit, setTotalLimit] = useState(100);
 
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -26,18 +24,46 @@ const UploadForm = () => {
     parseFile(file);
   }, []);
 
+  const fetchLatestQuestion = async () => {
+    try {
+      const response = await fetch(
+        'https://track-questions-default-rtdb.firebaseio.com/questions.json?orderBy="$key"&limitToLast=1'
+      );
+      const data = await response.json();
+      if (data) {
+        const latestQuestion = Object.values(data)[0];
+        setLatestData(latestQuestion);
+      }
+      console.log("Question fetched successfully.");
+    } catch (error) {
+      console.error(error);
+      setError("Error fetching latest question. Please try again.");
+    }
+  };
+
   useEffect(() => {
-    const questionsRef = dbRef.child("questions");
-    questionsRef.on("value", (snapshot) => {
-      const questions = [];
-      snapshot.forEach((childSnapshot) => {
-        const question = childSnapshot.val();
-        question.id = childSnapshot.key;
-        questions.push(question);
-      });
-      setLatestData(questions[questions.length - 1]); // get the last item in the array
-    });
+    fetchLatestQuestion();
   }, []);
+
+  useEffect(() => {
+    if (latestData.question) {
+      setText(latestData.question);
+      setUserData((prevState) => ({
+        ...prevState,
+        options: {
+          option1: latestData.option1,
+          option2: latestData.option2,
+          option3: latestData.option3,
+          option4: latestData.option4,
+        },
+        totalLimit: latestData.totalLimit,
+        comment: latestData.comment,
+        correctOption: latestData.correctOption,
+      }));
+      document.getElementById("correct-answer").value =
+        latestData.correctOption;
+    }
+  }, [latestData]);
 
   const newQuestion = async () => {
     try {
@@ -48,23 +74,23 @@ const UploadForm = () => {
         option2: userData.options["option2"].trim(),
         option3: userData.options["option3"].trim(),
         option4: userData.options["option4"].trim(),
-        timesUsed: 0,
-        timesRemaining: parseInt(userData.timesRemaining),
         totalLimit: parseInt(userData.totalLimit),
         createdAt: firebase.database.ServerValue.TIMESTAMP,
         comment: userData.comment.trim(),
-        text: text.trim(), // add the text property to the newQuestion object
+        correctOption: userData.correctOption,
       };
       await newQuestionRef.set(newQuestion);
       setUserData({
         question: "",
         options: { option1: "", option2: "", option3: "", option4: "" },
-        timesUsed: "",
-        timesRemaining: "",
         totalLimit: "",
         comment: "",
+        correctOption: "",
       });
-      setText(""); // clear the text state
+      document.getElementById("correct-answer").value = ""; // Reset the correct answer option
+      setError(null);
+      alert("Question uploaded successfully.");
+      fetchLatestQuestion();
     } catch (error) {
       console.error(error);
       setError("Error uploading question. Please try again.");
@@ -78,7 +104,6 @@ const UploadForm = () => {
   };
 
   const handleQuestionChange = (event) => {
-    // update userData state with the new value of the question input
     setUserData((prevState) => ({
       ...prevState,
       question: event.target.value,
@@ -86,7 +111,6 @@ const UploadForm = () => {
   };
 
   const handleOptionChange = (event) => {
-    // update userData state with the new value of the option inputs
     setUserData((prevState) => ({
       ...prevState,
       options: {
@@ -96,24 +120,7 @@ const UploadForm = () => {
     }));
   };
 
-  const handleTimesUsedChange = (event) => {
-    // update userData state with the new value of the timesUsed input
-    setUserData((prevState) => ({
-      ...prevState,
-      timesUsed: event.target.value,
-    }));
-  };
-
-  const handleTimesRemainingChange = (event) => {
-    // update userData state with the new value of the timesRemaining input
-    setUserData((prevState) => ({
-      ...prevState,
-      timesRemaining: event.target.value,
-    }));
-  };
-
   const handleTotalLimitChange = (event) => {
-    // update userData state with the new value of the totalLimit input
     setUserData((prevState) => ({
       ...prevState,
       totalLimit: event.target.value,
@@ -121,15 +128,10 @@ const UploadForm = () => {
   };
 
   const handleCommentChange = (event) => {
-    // update userData state with the new value of the comment input
     setUserData((prevState) => ({
       ...prevState,
       comment: event.target.value,
     }));
-  };
-
-  const handleNumericChange = (name) => (event) => {
-    setUserData({ ...userData, [name]: event.target.value });
   };
 
   const handleSubmit = async (event) => {
@@ -154,22 +156,33 @@ const UploadForm = () => {
       ];
     }
     try {
-      await uploadQuestions(questions);
       await newQuestion();
+      await uploadQuestions(questions);
       await uploadUserData();
-      setFile(null); // clear the file state
+
+      setFile(null);
       setUserData({
         question: "",
         options: { option1: "", option2: "", option3: "", option4: "" },
-        timesUsed: "",
-        timesRemaining: "",
         totalLimit: "",
         comment: "",
-      }); // reset the userData state
-      alert("Questions uploaded successfully!");
+      });
+
+      const correctOption = document
+        .getElementById("correct-answer")
+        .value.trim();
+      document.getElementById("correct-answer").value = ""; // clear input field
+      const optionKeys = Object.keys(userData.options);
+      const correctIndex = optionKeys.findIndex(
+        (key) => userData.options[key].trim() === correctOption
+      );
+      if (correctIndex >= 0) {
+        const correctOptionKey = optionKeys[correctIndex];
+        document.getElementById(correctOptionKey).checked = true; // select the correct option
+      }
     } catch (error) {
       console.error(error);
-      setError("Error uploading questions. Please try again.");
+      setError("Error uploading question. Please try again.");
     }
   };
 
@@ -253,8 +266,6 @@ const UploadForm = () => {
       };
       await newQuestionRef.set(newQuestion);
     }
-
-    // Get the latest uploaded data from Firebase
     dbRef.limitToLast(1).once("value", (snapshot) => {
       const latest = snapshot.val();
       if (latest) {
@@ -304,7 +315,7 @@ const UploadForm = () => {
           </div>
         </div>
         <div className="form-group">
-          <label htmlFor="question">Question Text</label>
+          <label htmlFor="question">Question:</label>
           <input
             type="text"
             className="form-control inputarea"
@@ -316,7 +327,7 @@ const UploadForm = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="option1">Option 1</label>
+          <label htmlFor="option1">Option 1:</label>
           <input
             type="text"
             className="form-control inputarea"
@@ -328,7 +339,7 @@ const UploadForm = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="option2">Option 2</label>
+          <label htmlFor="option2">Option 2:</label>
           <input
             type="text"
             className="form-control inputarea"
@@ -340,7 +351,7 @@ const UploadForm = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="option3">Option 3</label>
+          <label htmlFor="option3">Option 3:</label>
           <input
             type="text"
             className="form-control inputarea"
@@ -352,7 +363,7 @@ const UploadForm = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="option4">Option 4</label>
+          <label htmlFor="option4">Option 4:</label>
           <input
             type="text"
             className="form-control inputarea"
@@ -364,24 +375,20 @@ const UploadForm = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="timesUsed">Times Used</label>
-          <input
-            type="number"
-            className="form-control"
-            id="timesUsed"
-            value={userData.timesUsed}
-            onChange={handleTimesUsedChange}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="timesRemaining">Times Remaining</label>
-          <input
-            type="number"
-            className="form-control"
-            id="timesRemaining"
-            value={userData.timesRemaining}
-            onChange={handleTimesRemainingChange}
-          />
+          <label htmlFor="correct-answer">Correct Answer:</label>
+          <select
+            className="form-control inputarea"
+            id="correct-answer"
+            name="correctOption"
+            value={userData.correctOption}
+            onChange={handleOptionChange}
+          >
+            <option value="">-- Choose Correct Option --</option>
+            <option value="option1">Option 1</option>
+            <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+            <option value="option4">Option 4</option>
+          </select>
         </div>
         <div className="form-group">
           <label htmlFor="totalLimit">Total Limit</label>
@@ -396,14 +403,6 @@ const UploadForm = () => {
         <div className="form-group">
           <label htmlFor="textUpload">Your Comments:</label>
           <textarea
-            name="text"
-            id="text"
-            className="form-control inputarea"
-            placeholder="Type your question here..."
-            value={text}
-            onChange={handleTextChange} // add the onChange prop
-          />
-          <textarea
             className="form-control inputarea"
             placeholder="Enter Your Comments Here"
             id="textUpload"
@@ -417,57 +416,22 @@ const UploadForm = () => {
         </div>
         {error && <p className="errorMsg">{error}</p>}
       </form>
-      <div className="latestUploaded">
-        <h3>Latest Uploaded Question:</h3>
-        <p>
-          {latestData[latestData.length - 1] &&
-            latestData[latestData.length - 1].question}
-          Test
-        </p>
-        <p>
-          {latestData.length > 0
-            ? latestData[latestData.length - 1].question
-            : ""}
-        </p>
-        <h3>Options:</h3>
-        <ul>
-          <li>
-            {latestData[latestData.length - 1] &&
-              latestData[latestData.length - 1].option1}
-          </li>
-          <li>
-            {latestData[latestData.length - 1] &&
-              latestData[latestData.length - 1].option2}
-          </li>
-          <li>
-            {latestData[latestData.length - 1] &&
-              latestData[latestData.length - 1].option3}
-          </li>
-          <li>
-            {latestData[latestData.length - 1] &&
-              latestData[latestData.length - 1].option4}
-          </li>
-        </ul>
-        <h3>Times Used:</h3>
-        <p>
-          {latestData[latestData.length - 1] &&
-            latestData[latestData.length - 1].timesUsed}
-        </p>
-        <h3>Times Remaining:</h3>
-        <p>
-          {latestData[latestData.length - 1] &&
-            latestData[latestData.length - 1].timesRemaining}
-        </p>
-        <h3>Total Limit:</h3>
-        <p>
-          {latestData[latestData.length - 1] &&
-            latestData[latestData.length - 1].totalLimit}
-        </p>
-        <h3>Comment:</h3>
-        <p>
-          {latestData[latestData.length - 1] &&
-            latestData[latestData.length - 1].comment}
-        </p>
+      <div>
+        {Object.keys(latestData).length > 0 && (
+          <div>
+            <h4>Latest Uploaded Data:</h4>
+            <h4>
+              <p>Question: {latestData.question}</p>
+              <p>Option 1: {latestData.option1}</p>
+              <p>Option 2: {latestData.option2}</p>
+              <p>Option 3: {latestData.option3}</p>
+              <p>Option 4: {latestData.option4}</p>
+              <p>Answer: {userData.options[userData.correctOption]}</p>
+            </h4>
+            <p>Total Limit: {latestData.totalLimit}</p>
+            <p>Comment: {latestData.comment}</p>
+          </div>
+        )}
       </div>
     </div>
   );
