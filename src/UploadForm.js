@@ -18,6 +18,8 @@ const UploadForm = () => {
   });
   const [latestData, setLatestData] = useState({});
 
+  const dbRef = firebase.database().ref();
+
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
     setFile(file);
@@ -27,11 +29,11 @@ const UploadForm = () => {
   const fetchLatestQuestion = async () => {
     try {
       const response = await fetch(
-        'https://track-questions-default-rtdb.firebaseio.com/questions.json?orderBy="$key"&limitToLast=1'
+        'https://track-questions-default-rtdb.firebaseio.com/questions.json?orderBy="createdAt"&limitToLast=1'
       );
       const data = await response.json();
-      if (data) {
-        const latestQuestion = Object.values(data)[0];
+      if (data && data[Object.keys(data)[0]].question) {
+        const latestQuestion = data[Object.keys(data)[0]];
         setLatestData(latestQuestion);
       }
       console.log("Question fetched successfully.");
@@ -68,17 +70,29 @@ const UploadForm = () => {
   const newQuestion = async () => {
     try {
       const newQuestionRef = dbRef.child("questions").push();
+      if (
+        userData.question.trim() === "" ||
+        Object.values(userData.options).some(
+          (option) => option.trim() === ""
+        ) ||
+        userData.correctOption.trim() === ""
+      ) {
+        setError("Please fill in all fields.");
+        return;
+      }
       const newQuestion = {
         question: userData.question.trim(),
         option1: userData.options["option1"].trim(),
         option2: userData.options["option2"].trim(),
         option3: userData.options["option3"].trim(),
         option4: userData.options["option4"].trim(),
-        totalLimit: parseInt(userData.totalLimit),
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        comment: userData.comment.trim(),
+        comment: userData.comment,
         correctOption: userData.correctOption,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
       };
+      if (userData.totalLimit) {
+        newQuestion.totalLimit = parseInt(userData.totalLimit);
+      }
       await newQuestionRef.set(newQuestion);
       setUserData({
         question: "",
@@ -87,7 +101,7 @@ const UploadForm = () => {
         comment: "",
         correctOption: "",
       });
-      document.getElementById("correct-answer").value = ""; // Reset the correct answer option
+      document.getElementById("correct-answer").value = "";
       setError(null);
       alert("Question uploaded successfully.");
       fetchLatestQuestion();
@@ -111,15 +125,25 @@ const UploadForm = () => {
   };
 
   const handleOptionChange = (event) => {
-    setUserData((prevState) => ({
-      ...prevState,
-      options: {
-        ...prevState.options,
-        [event.target.name]: event.target.value,
-      },
-    }));
+    const { name, value } = event.target;
+
+    if (name === "correctOption") {
+      setUserData((prevState) => ({
+        ...prevState,
+        correctOption: value,
+      }));
+    } else {
+      setUserData((prevState) => ({
+        ...prevState,
+        options: {
+          ...prevState.options,
+          [name]: value,
+        },
+      }));
+    }
   };
 
+  //IT CAN BE USED LATER:
   const handleTotalLimitChange = (event) => {
     setUserData((prevState) => ({
       ...prevState,
@@ -259,8 +283,6 @@ const UploadForm = () => {
         option2: question.options[1],
         option3: question.options[2],
         option4: question.options[3],
-        timesUsed: question.lastUsed ? 1 : 0,
-        timesRemaining: question.remainingUsage,
         totalLimit: 100,
         createdAt: firebase.database.ServerValue.TIMESTAMP,
       };
@@ -286,8 +308,6 @@ const UploadForm = () => {
           option2: latestData.options[1],
           option3: latestData.options[2],
           option4: latestData.options[3],
-          timesUsed: latestData.lastUsed ? 1 : 0,
-          timesRemaining: latestData.remainingUsage,
           totalLimit: 100,
         },
       };
@@ -391,16 +411,6 @@ const UploadForm = () => {
           </select>
         </div>
         <div className="form-group">
-          <label htmlFor="totalLimit">Total Limit</label>
-          <input
-            type="number"
-            className="form-control"
-            id="totalLimit"
-            value={userData.totalLimit}
-            onChange={handleTotalLimitChange}
-          />
-        </div>
-        <div className="form-group">
           <label htmlFor="textUpload">Your Comments:</label>
           <textarea
             className="form-control inputarea"
@@ -410,6 +420,16 @@ const UploadForm = () => {
             value={userData.text}
             onChange={handleCommentChange}
           />
+          <div className="form-group">
+            <label htmlFor="totalLimit">Total Limit</label>
+            <input
+              type="number"
+              className="form-control"
+              id="totalLimit"
+              value={userData.totalLimit}
+              // onChange={handleTotalLimitChange}
+            />
+          </div>
           <button type="submit" className="btn btn-primary">
             Submit
           </button>
