@@ -6,13 +6,13 @@ import { dbRef } from "./firebaseConfig";
 import Papa from "papaparse";
 
 const UploadForm = () => {
+  // const [text, setText] = useState("");
   const [file, setFile] = useState(null);
-  const [text, setText] = useState("");
   const [error, setError] = useState(null);
   const [userData, setUserData] = useState({
     question: "",
     options: { option1: "", option2: "", option3: "", option4: "" },
-    totalLimit: 100,
+    totalLimit: undefined,
     comment: "",
     correctOption: "",
   });
@@ -29,12 +29,11 @@ const UploadForm = () => {
   const fetchLatestQuestion = async () => {
     try {
       const response = await fetch(
-        'https://track-questions-default-rtdb.firebaseio.com/questions.json?orderBy="createdAt"&limitToLast=1'
+        "https://track-questions-default-rtdb.firebaseio.com/questions.json?orderBy=%22createdAt%22&limitToLast=1"
       );
       const data = await response.json();
-      if (data && data[Object.keys(data)[0]].question) {
-        const latestQuestion = data[Object.keys(data)[0]];
-        setLatestData(latestQuestion);
+      if (data) {
+        setLatestData(Object.values(data)[0]);
       }
       console.log("Question fetched successfully.");
     } catch (error) {
@@ -48,17 +47,15 @@ const UploadForm = () => {
   }, []);
 
   useEffect(() => {
-    if (latestData.question) {
-      setText(latestData.question);
+    if (Object.keys(latestData).length > 0) {
+      // check if latestData is truthy
       setUserData((prevState) => ({
         ...prevState,
-        options: {
-          option1: latestData.option1,
-          option2: latestData.option2,
-          option3: latestData.option3,
-          option4: latestData.option4,
-        },
-        totalLimit: latestData.totalLimit,
+        options: { ...latestData.options },
+        totalLimit:
+          latestData.totalLimit !== ""
+            ? parseInt(latestData.totalLimit)
+            : undefined,
         comment: latestData.comment,
         correctOption: latestData.correctOption,
       }));
@@ -67,7 +64,7 @@ const UploadForm = () => {
     }
   }, [latestData]);
 
-  const newQuestion = async () => {
+  const newQuestion = async (userData) => {
     try {
       const newQuestionRef = dbRef.child("questions").push();
       if (
@@ -87,17 +84,18 @@ const UploadForm = () => {
         option3: userData.options["option3"].trim(),
         option4: userData.options["option4"].trim(),
         comment: userData.comment,
-        correctOption: userData.correctOption,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
+        correctOption: parseInt(userData.correctOption, 10),
+        createdAt: firebase.database.ServerValue.TIMESTAMP(),
       };
-      if (userData.totalLimit) {
+      if (userData.totalLimit !== undefined) {
+        // check if totalLimit is not undefined
         newQuestion.totalLimit = parseInt(userData.totalLimit);
       }
       await newQuestionRef.set(newQuestion);
       setUserData({
         question: "",
         options: { option1: "", option2: "", option3: "", option4: "" },
-        totalLimit: "",
+        totalLimit: null,
         comment: "",
         correctOption: "",
       });
@@ -112,10 +110,6 @@ const UploadForm = () => {
   };
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
-
-  const handleTextChange = (event) => {
-    setText(event.target.value);
-  };
 
   const handleQuestionChange = (event) => {
     setUserData((prevState) => ({
@@ -160,6 +154,7 @@ const UploadForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    newQuestion(userData);
     setError(null);
     let questions;
     if (file) {
@@ -437,7 +432,8 @@ const UploadForm = () => {
         {error && <p className="errorMsg">{error}</p>}
       </form>
       <div>
-        {Object.keys(latestData).length > 0 && (
+        {/* {Object.keys(latestData).length > 0 && ( */}
+        {latestData && (
           <div>
             <h4>Latest Uploaded Data:</h4>
             <h4>
@@ -447,9 +443,11 @@ const UploadForm = () => {
               <p>Option 3: {latestData.option3}</p>
               <p>Option 4: {latestData.option4}</p>
               <p>Answer: {userData.options[userData.correctOption]}</p>
+              <p>Answer: {latestData.correctOption}</p>
             </h4>
             <p>Total Limit: {latestData.totalLimit}</p>
             <p>Comment: {latestData.comment}</p>
+            <p>Comment: {userData.comment}</p>
           </div>
         )}
       </div>
