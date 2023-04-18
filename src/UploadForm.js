@@ -495,7 +495,7 @@ const UploadForm = () => {
         </div>
         {error && <p className="errorMsg">{error}</p>}
       </form>
-      <div>
+      <div id="latestFetchedData">
         {/* {Object.keys(latestData).length > 0 && ( */}
         {latestData && (
           <div>
