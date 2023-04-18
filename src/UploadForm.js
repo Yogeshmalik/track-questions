@@ -6,19 +6,16 @@ import { dbRef } from "./firebaseConfig";
 import Papa from "papaparse";
 
 const UploadForm = () => {
-  // const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
   const [userData, setUserData] = useState({
     question: "",
     options: { option1: "", option2: "", option3: "", option4: "" },
-    totalLimit: undefined,
+    totalLimit: 100,
     comment: "",
     correctOption: "",
   });
   const [latestData, setLatestData] = useState({});
-
-  const dbRef = firebase.database().ref();
 
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -33,9 +30,9 @@ const UploadForm = () => {
       );
       const data = await response.json();
       if (data) {
-        setLatestData(Object.values(data)[0]);
+        setLatestData(data);
       }
-      console.log("Question fetched successfully.");
+      console.log("Question fetched successfully.", userData);
     } catch (error) {
       console.error(error);
       setError("Error fetching latest question. Please try again.");
@@ -43,19 +40,12 @@ const UploadForm = () => {
   };
 
   useEffect(() => {
-    fetchLatestQuestion();
-  }, []);
-
-  useEffect(() => {
     if (Object.keys(latestData).length > 0) {
-      // check if latestData is truthy
       setUserData((prevState) => ({
         ...prevState,
         options: { ...latestData.options },
         totalLimit:
-          latestData.totalLimit !== ""
-            ? parseInt(latestData.totalLimit)
-            : undefined,
+          latestData.totalLimit !== "" ? parseInt(latestData.totalLimit) : 100,
         comment: latestData.comment,
         correctOption: latestData.correctOption,
       }));
@@ -64,40 +54,46 @@ const UploadForm = () => {
     }
   }, [latestData]);
 
+  useEffect(() => {
+    fetchLatestQuestion();
+  }, []);
+
   const newQuestion = async (userData) => {
     try {
       const newQuestionRef = dbRef.child("questions").push();
       if (
         userData.question.trim() === "" ||
-        Object.values(userData.options).some(
-          (option) => option.trim() === ""
+        Object.keys(userData.options).some(
+          (option) => userData.options[option].trim() === ""
         ) ||
-        userData.correctOption.trim() === ""
+        userData.correctOption === null
       ) {
         setError("Please fill in all fields.");
         return;
       }
       const newQuestion = {
         question: userData.question.trim(),
-        option1: userData.options["option1"].trim(),
-        option2: userData.options["option2"].trim(),
-        option3: userData.options["option3"].trim(),
-        option4: userData.options["option4"].trim(),
-        comment: userData.comment,
-        correctOption: parseInt(userData.correctOption, 10),
-        createdAt: firebase.database.ServerValue.TIMESTAMP(),
+        options: {
+          option1: userData.options["option1"].trim(),
+          option2: userData.options["option2"].trim(),
+          option3: userData.options["option3"].trim(),
+          option4: userData.options["option4"].trim(),
+        },
+        comment: userData.comment.trim(),
+        correctOption:
+          userData.correctOption !== ""
+            ? parseInt(userData.correctOption, 10)
+            : null,
+        totalLimit: parseInt(userData.totalLimit || "100", 10),
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
       };
-      if (userData.totalLimit !== undefined) {
-        // check if totalLimit is not undefined
-        newQuestion.totalLimit = parseInt(userData.totalLimit);
-      }
       await newQuestionRef.set(newQuestion);
       setUserData({
         question: "",
         options: { option1: "", option2: "", option3: "", option4: "" },
-        totalLimit: null,
+        totalLimit: 100,
         comment: "",
-        correctOption: "",
+        correctOption: null,
       });
       document.getElementById("correct-answer").value = "";
       setError(null);
@@ -137,11 +133,11 @@ const UploadForm = () => {
     }
   };
 
-  //IT CAN BE USED LATER:
   const handleTotalLimitChange = (event) => {
+    const value = parseInt(event.target.value, 10) || 100;
     setUserData((prevState) => ({
       ...prevState,
-      totalLimit: event.target.value,
+      totalLimit: value,
     }));
   };
 
@@ -154,56 +150,117 @@ const UploadForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    newQuestion(userData);
-    setError(null);
-    let questions;
-    if (file) {
-      questions = await parseFile(file);
-    } else {
-      questions = [
-        {
-          text: userData.question.trim(),
-          options: [
-            userData.options.option1.trim(),
-            userData.options.option2.trim(),
-            userData.options.option3.trim(),
-            userData.options.option4.trim(),
-          ],
-          remainingUsage: parseInt(userData.timesRemaining),
-          lastUsed: null,
-        },
-      ];
-    }
+
+    const questionRecordsRef = firebase.database().ref("questionRecords");
+    const questionsRef = questionRecordsRef.child("questions");
+
     try {
-      await newQuestion();
-      await uploadQuestions(questions);
-      await uploadUserData();
+      const questionRecordsSnapshot = await questionRecordsRef.once("value");
+      const questionsSnapshot = await questionsRef.once("value");
 
-      setFile(null);
-      setUserData({
-        question: "",
-        options: { option1: "", option2: "", option3: "", option4: "" },
-        totalLimit: "",
-        comment: "",
-      });
+      if (questionRecordsSnapshot.exists() && questionsSnapshot.exists()) {
+        const { userData, file } = event.target.elements;
+        const parsedQuestions = file
+          ? await parseFile(file.files[0])
+          : [
+              {
+                text: userData.question.value.trim(),
+                options: [
+                  userData.option1.value.trim(),
+                  userData.option2.value.trim(),
+                  userData.option3.value.trim(),
+                  userData.option4.value.trim(),
+                ],
+                comment: userData.comment.value.trim(),
+                correctOption:
+                  parseInt(userData.correctOption.value, 10) || null,
+                totalLimit: parseInt(userData.totalLimit.value, 10) || 100,
+                createdAt: firebase.database.ServerValue.TIMESTAMP,
+              },
+            ];
 
-      const correctOption = document
-        .getElementById("correct-answer")
-        .value.trim();
-      document.getElementById("correct-answer").value = ""; // clear input field
-      const optionKeys = Object.keys(userData.options);
-      const correctIndex = optionKeys.findIndex(
-        (key) => userData.options[key].trim() === correctOption
-      );
-      if (correctIndex >= 0) {
-        const correctOptionKey = optionKeys[correctIndex];
-        document.getElementById(correctOptionKey).checked = true; // select the correct option
+        await Promise.all([
+          uploadQuestions(parsedQuestions),
+          newQuestion(userData),
+          uploadUserData(),
+        ]);
+
+        event.target.reset();
+        document.getElementById("correct-answer").value = "";
+
+        const correctOption = userData.correctOption.value.trim();
+        const optionKeys = ["option1", "option2", "option3", "option4"];
+        const correctIndex = optionKeys.findIndex(
+          (key) => userData[key].value.trim() === correctOption
+        );
+
+        if (correctIndex >= 0) {
+          const correctOptionKey = optionKeys[correctIndex];
+          document.getElementById(correctOptionKey).checked = true;
+        }
+      } else {
+        throw new Error("Failed to submit the form");
       }
     } catch (error) {
       console.error(error);
       setError("Error uploading question. Please try again.");
     }
   };
+
+  // const handleSubmit = async (event) => {
+  //   event.preventDefault();
+  //   const questionRecordsRef = firebase.database().ref("questionRecords");
+  //   const questionsRef = questionRecordsRef.child("questions");
+  //   try {
+  //     const questionRecordsSnapshot = await questionRecordsRef.once("value");
+  //     const questionsSnapshot = await questionsRef.once("value");
+  //     if (questionRecordsSnapshot.exists() && questionsSnapshot.exists()) {
+  //       // Proceed with updating the database
+  //       const { userData, file } = event.target.elements;
+  //       let parsedQuestions;
+  //       if (file) {
+  //         parsedQuestions = await parseFile(file.files[0]);
+  //       } else {
+  //         parsedQuestions = [
+  //           {
+  //             text: userData.question.value.trim(),
+  //             options: [
+  //               userData.option1.value.trim(),
+  //               userData.option2.value.trim(),
+  //               userData.option3.value.trim(),
+  //               userData.option4.value.trim(),
+  //             ],
+  //             comment: userData.comment.value.trim(),
+  //             correctOption: parseInt(userData.correctOption.value, 10) || null,
+  //             totalLimit: parseInt(userData.totalLimit.value, 10) || 100,
+  //             createdAt: firebase.database.ServerValue.TIMESTAMP,
+  //           },
+  //         ];
+  //       }
+  //       await Promise.all([
+  //         uploadQuestions(parsedQuestions),
+  //         newQuestion(userData),
+  //         uploadUserData(),
+  //       ]);
+  //       event.target.reset();
+  //       document.getElementById("correct-answer").value = "";
+  //       const correctOption = userData.correctOption.value.trim();
+  //       const optionKeys = ["option1", "option2", "option3", "option4"];
+  //       const correctIndex = optionKeys.findIndex(
+  //         (key) => userData[key].value.trim() === correctOption
+  //       );
+  //       if (correctIndex >= 0) {
+  //         const correctOptionKey = optionKeys[correctIndex];
+  //         document.getElementById(correctOptionKey).checked = true;
+  //       }
+  //     } else {
+  //       throw new Error("Failed to submit the form");
+  //     }
+  //   } catch (error) {
+  //     console.error(error);
+  //     setError("Error uploading question. Please try again.");
+  //   }
+  // };
 
   const parseFile = async (file) => {
     const reader = new FileReader();
@@ -339,6 +396,7 @@ const UploadForm = () => {
             placeholder="Enter Your Question Here..."
             value={userData.question}
             onChange={handleQuestionChange}
+            required
           />
         </div>
         <div className="form-group">
@@ -351,6 +409,7 @@ const UploadForm = () => {
             placeholder="Enter Your Option Here..."
             value={userData.options.option1}
             onChange={handleOptionChange}
+            required
           />
         </div>
         <div className="form-group">
@@ -363,6 +422,7 @@ const UploadForm = () => {
             placeholder="Enter Your Option Here..."
             value={userData.options.option2}
             onChange={handleOptionChange}
+            required
           />
         </div>
         <div className="form-group">
@@ -375,6 +435,7 @@ const UploadForm = () => {
             placeholder="Enter Your Option Here..."
             value={userData.options.option3}
             onChange={handleOptionChange}
+            required
           />
         </div>
         <div className="form-group">
@@ -387,6 +448,7 @@ const UploadForm = () => {
             placeholder="Enter Your Option Here..."
             value={userData.options.option4}
             onChange={handleOptionChange}
+            required
           />
         </div>
         <div className="form-group">
@@ -395,8 +457,9 @@ const UploadForm = () => {
             className="form-control inputarea"
             id="correct-answer"
             name="correctOption"
-            value={userData.correctOption}
+            value={userData.correctOption || ""}
             onChange={handleOptionChange}
+            required
           >
             <option value="">-- Choose Correct Option --</option>
             <option value="option1">Option 1</option>
@@ -407,24 +470,25 @@ const UploadForm = () => {
         </div>
         <div className="form-group">
           <label htmlFor="textUpload">Your Comments:</label>
-          <textarea
+          <input
             className="form-control inputarea"
             placeholder="Enter Your Comments Here"
             id="textUpload"
-            rows="3"
             value={userData.text}
             onChange={handleCommentChange}
           />
-          <div className="form-group">
-            <label htmlFor="totalLimit">Total Limit</label>
-            <input
-              type="number"
-              className="form-control"
-              id="totalLimit"
-              value={userData.totalLimit}
-              // onChange={handleTotalLimitChange}
-            />
-          </div>
+        </div>
+        <div className="form-group">
+          <label htmlFor="totalLimit">Total Limit</label>
+          <input
+            type="number"
+            className="form-control"
+            id="totalLimit"
+            value={userData.totalLimit || ""}
+            onChange={handleTotalLimitChange}
+          />
+        </div>
+        <div>
           <button type="submit" className="btn btn-primary">
             Submit
           </button>
@@ -447,7 +511,7 @@ const UploadForm = () => {
             </h4>
             <p>Total Limit: {latestData.totalLimit}</p>
             <p>Comment: {latestData.comment}</p>
-            <p>Comment: {userData.comment}</p>
+            {/* <p>Comment: {userData.comment}</p> */}
           </div>
         )}
       </div>

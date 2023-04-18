@@ -33,7 +33,7 @@ const firebaseConfig = {
 const fbConfig = firebase.initializeApp(firebaseConfig);
 const dbRef = firebase.database(fbConfig).ref("questionRecords");
 
-export { dbRef, firebaseConfig };
+export { dbRef, firebaseConfig, firebase };
 // Initialize Firebase
 // const app = initializeApp(firebaseConfig);
 // const analytics = getAnalytics(app);
