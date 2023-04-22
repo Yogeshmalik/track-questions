@@ -141,18 +141,70 @@ const UploadForm = () => {
     }));
   };
 
+  const parseCSV = (text) => {
+    const results = Papa.parse(text.trim(), { header: true, delimiter: "," });
+    return results.data.map((parsedQuestion) => ({
+      question: parsedQuestion.question.trim(),
+      options: [
+        parsedQuestion.option1.trim(),
+        parsedQuestion.option2.trim(),
+        parsedQuestion.option3.trim(),
+        parsedQuestion.option4.trim(),
+      ],
+      correctOption: parsedQuestion.correctOption.trim(),
+      createdAt: Date.now(),
+      comment: parsedQuestion.comment ? parsedQuestion.comment.trim() : "",
+      totalLimit: parsedQuestion.totalLimit
+        ? parseInt(parsedQuestion.totalLimit.trim(), 10)
+        : 100,
+    }));
+  };
+
+  const parseText = (text) => {
+    const delimiter = /[,\t]/;
+    const rows = text.trim().split(/\r?\n/);
+    const header = rows[0].split(delimiter).map((value) => value.trim());
+    if (
+      header.includes("question") &&
+      header.includes("option1") &&
+      header.includes("option2") &&
+      header.includes("option3") &&
+      header.includes("option4") &&
+      header.includes("correctOption")
+    ) {
+      return rows.slice(1).map((row) => {
+        const values = row.split(delimiter).map((value) => value.trim());
+        return {
+          question: values[header.indexOf("question")],
+          options: {
+            option1: values[header.indexOf("option1")],
+            option2: values[header.indexOf("option2")],
+            option3: values[header.indexOf("option3")],
+            option4: values[header.indexOf("option4")],
+          },
+          correctOption: values[header.indexOf("correctOption")],
+          createdAt: Date.now(),
+          comment: values[header.indexOf("comment")] || "",
+          totalLimit: parseInt(values[header.indexOf("totalLimit")], 10) || 100,
+        };
+      });
+    } else {
+      throw new Error("Invalid file format.");
+    }
+  };
+
   const parseFile = async (file) => {
-    const reader = new FileReader();
     return new Promise((resolve, reject) => {
+      const reader = new FileReader();
       reader.onload = async (event) => {
         const content = event.target.result;
-        let questions;
-        if (file.name.endsWith(".csv")) {
-          questions = parseCSV(content);
-        } else {
-          questions = parseText(content);
-        }
         try {
+          let questions;
+          if (file.name.endsWith(".csv")) {
+            questions = parseCSV(content);
+          } else {
+            questions = parseText(content);
+          }
           await uploadQuestions(questions);
           alert("Questions uploaded successfully!");
           resolve(questions);
@@ -166,41 +218,6 @@ const UploadForm = () => {
       };
       reader.readAsText(file);
     });
-  };
-
-  const parseCSV = (text) => {
-    const results = Papa.parse(text, { header: true });
-    return results.data.map((parsedQuestion) => ({
-      question: parsedQuestion.question.trim(),
-      options: [
-        parsedQuestion.option1.trim(),
-        parsedQuestion.option2.trim(),
-        parsedQuestion.option3.trim(),
-        parsedQuestion.option4.trim(),
-      ],
-      timesUsed: 0,
-      timesRemaining: 100,
-      totalLimit: null,
-      createdAt: firebase.database.ServerValue.TIMESTAMP,
-      comment: "",
-    }));
-  };
-
-  const parseText = (text) => {
-    const lines = text.trim().split("\n");
-    const questions = lines.map((line) => {
-      const [questionText, ...options] = line.trim().split(",");
-      return {
-        question: questionText.trim(),
-        options: options.map((option) => option.trim()),
-        timesUsed: 0,
-        timesRemaining: 100,
-        totalLimit: null,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-        comment: "",
-      };
-    });
-    return questions;
   };
 
   const uploadQuestions = async (questions) => {
@@ -225,6 +242,7 @@ const UploadForm = () => {
       }
     });
   };
+
   const uploadUserData = async () => {
     try {
       const userDataRef = dbRef.child("userData");
