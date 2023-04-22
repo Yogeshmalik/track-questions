@@ -222,25 +222,34 @@ const UploadForm = () => {
 
   const uploadQuestions = async (questions) => {
     const dbRef = firebase.database().ref("questions");
-    for (const question of questions) {
-      const newQuestionRef = dbRef.push();
-      const newQuestion = {
-        question: question.text,
-        option1: question.options[0],
-        option2: question.options[1],
-        option3: question.options[2],
-        option4: question.options[3],
-        totalLimit: 100,
-        createdAt: firebase.database.ServerValue.TIMESTAMP,
-      };
-      await newQuestionRef.set(newQuestion);
-    }
-    dbRef.limitToLast(1).once("value", (snapshot) => {
-      const latest = snapshot.val();
-      if (latest) {
-        setLatestData(latest[Object.keys(latest)[0]]);
+    try {
+      for (const question of questions) {
+        const newQuestionRef = dbRef.push();
+        const newQuestion = {
+          question: question.question,
+          option1: question.options.option1,
+          option2: question.options.option2,
+          option3: question.options.option3,
+          option4: question.options.option4,
+          correctOption: question.correctOption,
+          totalLimit: question.totalLimit || 100,
+          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          comment: question.comment || "",
+        };
+        await newQuestionRef.set(newQuestion);
       }
-    });
+      dbRef.limitToLast(1).once("value", (snapshot) => {
+        const latest = snapshot.val();
+        if (latest) {
+          setLatestData(latest[Object.keys(latest)[0]]);
+        }
+      });
+      setFile(null);
+      setError(null);
+    } catch (error) {
+      console.error(error);
+      setError("Error uploading questions. Please try again.");
+    }
   };
 
   const uploadUserData = async () => {
