@@ -256,25 +256,45 @@ const UploadForm = () => {
 
   const uploadUserData = async () => {
     try {
-      const userDataRef = dbRef.child("userData");
+      const questionsRef = firebase.database().ref("questions");
+      const newQuestionRef = questionsRef.push();
+      const newQuestionKey = newQuestionRef.key;
+      const timestamp = Date.now();
+      const formattedData = {
+        ...userData,
+        createdAt: timestamp,
+      };
+      await newQuestionRef.set(formattedData);
+      setLatestData({ ...formattedData, key: newQuestionKey });
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        totalLimit: 100,
+        comment: "",
+        correctOption: "",
+      });
+      const userDataRef = firebase.database().ref("userData");
       const snapshot = await userDataRef.once("value");
       const userData = snapshot.val() || {};
       const newUserData = {
         ...userData,
-        [latestData.text]: {
-          option1: latestData.options[0],
-          option2: latestData.options[1],
-          option3: latestData.options[2],
-          option4: latestData.options[3],
-          totalLimit: 100,
+        [newQuestionKey]: {
+          option1: formattedData.options.option1,
+          option2: formattedData.options.option2,
+          option3: formattedData.options.option3,
+          option4: formattedData.options.option4,
+          totalLimit: formattedData.totalLimit,
+          comment: formattedData.comment,
+          correctOption: formattedData.correctOption,
         },
       };
       await userDataRef.set(newUserData);
     } catch (error) {
       console.error(error);
+      setError("Error uploading question. Please try again.");
     }
   };
-  
+
   const LatestData = ({ latestData }) => {
     if (Object.keys(latestData).length === 0) {
       return null;
