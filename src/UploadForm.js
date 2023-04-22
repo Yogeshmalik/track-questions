@@ -22,6 +22,7 @@ const UploadForm = () => {
     parseFile(file);
   }, []);
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
+
   const fetchLatestQuestion = async () => {
     try {
       const response = await fetch(
@@ -32,7 +33,7 @@ const UploadForm = () => {
         const latestQuestionKey = Object.keys(data)[0];
         setLatestData({ ...data[latestQuestionKey], key: latestQuestionKey });
       }
-      console.log("Question fetched successfully.", userData);
+      console.log("Question fetched successfully.", userData, latestData);
     } catch (error) {
       console.error(error);
       setError("Error fetching latest question. Please try again.");
@@ -71,7 +72,6 @@ const UploadForm = () => {
         setError("Please fill in all fields.");
         return;
       }
-
       const questionData = {
         question: userData.question.trim(),
         options: {
@@ -80,17 +80,26 @@ const UploadForm = () => {
           option3: userData.options.option3.trim(),
           option4: userData.options.option4.trim(),
         },
-        totalLimit: userData.totalLimit,
+        totalLimit:
+          userData.totalLimit !== "" ? parseInt(userData.totalLimit) : 100,
         comment: userData.comment.trim(),
         correctOption: userData.correctOption.trim(),
         createdAt: Date.now(),
       };
-
-      await dbRef.child("questions").push(questionData);
-
+      const snapshot = await firebase
+        .database()
+        .ref("questions")
+        .push(questionData);
+      console.log("Question added successfully.", snapshot.key);
+      setLatestData({ ...questionData, key: snapshot.key });
+      setUserData({
+        question: "",
+        options: { option1: "", option2: "", option3: "", option4: "" },
+        totalLimit: 100,
+        comment: "",
+        correctOption: "",
+      });
       setError(null);
-      setFile(null);
-      setLatestData(questionData);
     } catch (error) {
       console.error(error);
       setError("Error uploading question. Please try again.");
@@ -104,21 +113,13 @@ const UploadForm = () => {
     }));
   };
   const handleOptionChange = (event) => {
-    const { name, value } = event.target;
-    if (name === "correctOption") {
-      setUserData((prevState) => ({
-        ...prevState,
-        correctOption: value,
-      }));
-    } else {
-      setUserData((prevState) => ({
-        ...prevState,
-        options: {
-          ...prevState.options,
-          [name]: value,
-        },
-      }));
-    }
+    setUserData((prevState) => ({
+      ...prevState,
+      options: {
+        ...prevState.options,
+        [event.target.name]: event.target.value,
+      },
+    }));
   };
   const handleTotalLimitChange = (event) => {
     const value = parseInt(event.target.value, 10) || 100;
