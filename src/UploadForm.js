@@ -21,6 +21,7 @@ const UploadForm = () => {
     setFile(file);
     parseFile(file);
   }, []);
+
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
   const fetchLatestQuestion = async () => {
@@ -121,23 +122,24 @@ const UploadForm = () => {
       },
     }));
   };
-  const handleTotalLimitChange = (event) => {
-    const value = parseInt(event.target.value, 10) || 100;
+  const handleTotalLimitChange = (e) => {
     setUserData((prevState) => ({
       ...prevState,
-      totalLimit: value,
+      totalLimit: e.target.value,
     }));
   };
-  const handleCommentChange = (event) => {
+
+  const handleCommentChange = (e) => {
     setUserData((prevState) => ({
       ...prevState,
-      comment: event.target.value,
+      comment: e.target.value,
     }));
   };
+
   const handleCorrectOptionChange = (e) => {
     setUserData((prevState) => ({
       ...prevState,
-      correctOption: e.target.value.trim(),
+      correctOption: e.target.value,
     }));
   };
 
@@ -272,6 +274,7 @@ const UploadForm = () => {
       console.error(error);
     }
   };
+  
   const LatestData = ({ latestData }) => {
     if (Object.keys(latestData).length === 0) {
       return null;
