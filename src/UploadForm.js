@@ -23,6 +23,8 @@ const UploadForm = () => {
     parseFile(file);
   }, []);
 
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
+
   const fetchLatestQuestion = async () => {
     try {
       const response = await fetch(
@@ -105,8 +107,6 @@ const UploadForm = () => {
     }
   };
 
-  const { getRootProps, getInputProps } = useDropzone({ onDrop });
-
   const handleQuestionChange = (event) => {
     setUserData((prevState) => ({
       ...prevState,
@@ -151,116 +151,73 @@ const UploadForm = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const questionRecordsRef = firebase.database().ref("questionRecords");
-    const questionsRef = questionRecordsRef.child("questions");
+    const {
+      question,
+      option1,
+      option2,
+      option3,
+      option4,
+      correctOption,
+      comment,
+      totalLimit,
+    } = event.target.elements;
 
-    try {
-      const questionRecordsSnapshot = await questionRecordsRef.once("value");
-      const questionsSnapshot = await questionsRef.once("value");
+    if (
+      question.value &&
+      option1.value &&
+      option2.value &&
+      option3.value &&
+      option4.value &&
+      correctOption.value !== "" &&
+      comment.value &&
+      totalLimit.value !== ""
+    ) {
+      const questionData = {
+        question: question.value.trim(),
+        option1: option1.value.trim(),
+        option2: option2.value.trim(),
+        option3: option3.value.trim(),
+        option4: option4.value.trim(),
+        correctOption: parseInt(correctOption.value, 10),
+        comment: comment.value.trim(),
+        totalLimit: parseInt(totalLimit.value, 10) || 100,
+        createdAt: firebase.database.ServerValue.TIMESTAMP,
+      };
 
-      if (questionRecordsSnapshot.exists() && questionsSnapshot.exists()) {
-        const { userData, file } = event.target.elements;
-        const parsedQuestions = file
-          ? await parseFile(file.files[0])
-          : [
-              {
-                text: userData.question.value.trim(),
-                options: [
-                  userData.option1.value.trim(),
-                  userData.option2.value.trim(),
-                  userData.option3.value.trim(),
-                  userData.option4.value.trim(),
-                ],
-                comment: userData.comment.value.trim(),
-                correctOption:
-                  parseInt(userData.correctOption.value, 10) || null,
-                totalLimit: parseInt(userData.totalLimit.value, 10) || 100,
-                createdAt: firebase.database.ServerValue.TIMESTAMP,
-              },
-            ];
+      const questionRecordsRef = firebase.database().ref("questionRecords");
+      const questionsRef = questionRecordsRef.child("questions");
 
-        await Promise.all([
-          uploadQuestions(parsedQuestions),
-          newQuestion(userData),
-          uploadUserData(),
-        ]);
+      try {
+        const questionRecordsSnapshot = await questionRecordsRef.once("value");
+        const questionsSnapshot = await questionsRef.once("value");
 
-        event.target.reset();
-        document.getElementById("correct-answer").value = "";
+        if (questionRecordsSnapshot.exists() && questionsSnapshot.exists()) {
+          await Promise.all([
+            questionsRef.push(questionData),
+            questionRecordsRef
+              .child("questionCount")
+              .transaction((currentCount) => (currentCount || 0) + 1),
+          ]);
 
-        const correctOption = userData.correctOption.value.trim();
-        const optionKeys = ["option1", "option2", "option3", "option4"];
-        const correctIndex = optionKeys.findIndex(
-          (key) => userData[key].value.trim() === correctOption
-        );
+          event.target.reset();
+          const correctAnswerInput = document.getElementById("correct-answer");
+          if (correctAnswerInput) {
+            correctAnswerInput.value = "";
+          }
+          const optionKeys = ["option1", "option2", "option3", "option4"];
 
-        if (correctIndex >= 0) {
-          const correctOptionKey = optionKeys[correctIndex];
-          document.getElementById(correctOptionKey).checked = true;
+          optionKeys.forEach((optionKey) => {
+            const optionElement = document.getElementById(optionKey);
+            if (optionElement) {
+              optionElement.classList.remove("valid", "invalid");
+            }
+          });
         }
-      } else {
-        throw new Error("Failed to submit the form");
+      } catch (error) {
+        console.error(error);
       }
-    } catch (error) {
-      console.error(error);
-      setError("Error uploading question. Please try again.");
     }
   };
-
-  // const handleSubmit = async (event) => {
-  //   event.preventDefault();
-  //   const questionRecordsRef = firebase.database().ref("questionRecords");
-  //   const questionsRef = questionRecordsRef.child("questions");
-  //   try {
-  //     const questionRecordsSnapshot = await questionRecordsRef.once("value");
-  //     const questionsSnapshot = await questionsRef.once("value");
-  //     if (questionRecordsSnapshot.exists() && questionsSnapshot.exists()) {
-  //       // Proceed with updating the database
-  //       const { userData, file } = event.target.elements;
-  //       let parsedQuestions;
-  //       if (file) {
-  //         parsedQuestions = await parseFile(file.files[0]);
-  //       } else {
-  //         parsedQuestions = [
-  //           {
-  //             text: userData.question.value.trim(),
-  //             options: [
-  //               userData.option1.value.trim(),
-  //               userData.option2.value.trim(),
-  //               userData.option3.value.trim(),
-  //               userData.option4.value.trim(),
-  //             ],
-  //             comment: userData.comment.value.trim(),
-  //             correctOption: parseInt(userData.correctOption.value, 10) || null,
-  //             totalLimit: parseInt(userData.totalLimit.value, 10) || 100,
-  //             createdAt: firebase.database.ServerValue.TIMESTAMP,
-  //           },
-  //         ];
-  //       }
-  //       await Promise.all([
-  //         uploadQuestions(parsedQuestions),
-  //         newQuestion(userData),
-  //         uploadUserData(),
-  //       ]);
-  //       event.target.reset();
-  //       document.getElementById("correct-answer").value = "";
-  //       const correctOption = userData.correctOption.value.trim();
-  //       const optionKeys = ["option1", "option2", "option3", "option4"];
-  //       const correctIndex = optionKeys.findIndex(
-  //         (key) => userData[key].value.trim() === correctOption
-  //       );
-  //       if (correctIndex >= 0) {
-  //         const correctOptionKey = optionKeys[correctIndex];
-  //         document.getElementById(correctOptionKey).checked = true;
-  //       }
-  //     } else {
-  //       throw new Error("Failed to submit the form");
-  //     }
-  //   } catch (error) {
-  //     console.error(error);
-  //     setError("Error uploading question. Please try again.");
-  //   }
-  // };
 
   const parseFile = async (file) => {
     const reader = new FileReader();
@@ -453,7 +410,17 @@ const UploadForm = () => {
         </div>
         <div className="form-group">
           <label htmlFor="correct-answer">Correct Answer:</label>
-          <select
+          <input
+            type="number"
+            id="correct-answer"
+            className="form-control inputarea"
+            name="correctOption"
+            min="1"
+            max="4"
+            defaultValue=""
+            required
+          />
+          {/* <select
             className="form-control inputarea"
             id="correct-answer"
             name="correctOption"
@@ -466,7 +433,7 @@ const UploadForm = () => {
             <option value="option2">Option 2</option>
             <option value="option3">Option 3</option>
             <option value="option4">Option 4</option>
-          </select>
+          </select> */}
         </div>
         <div className="form-group">
           <label htmlFor="textUpload">Your Comments:</label>
