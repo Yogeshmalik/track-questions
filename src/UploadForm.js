@@ -54,8 +54,8 @@ const UploadForm = () => {
         comment: latestData.comment,
         correctOption: latestData.correctOption,
       }));
-      document.getElementById("correct-answer").value =
-        latestData.correctOption;
+      // document.getElementById("correct-answer").value =
+      //   latestData.correctOption;
     }
   }, [latestData]);
 
@@ -326,9 +326,8 @@ const UploadForm = () => {
     );
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    uploadUserData();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       if (file) {
         await parseFile(file);
@@ -344,7 +343,6 @@ const UploadForm = () => {
           setError("Please fill in all fields.");
           return;
         }
-
         const questionData = {
           question: userData.question.trim(),
           options: {
@@ -358,6 +356,7 @@ const UploadForm = () => {
           correctOption: userData.options[userData.correctOption].trim(),
           createdAt: Date.now(),
         };
+
         await dbRef.child("questions").push(questionData);
         setLatestData(questionData);
         setUserData({
@@ -374,6 +373,7 @@ const UploadForm = () => {
         });
       }
       setError(null);
+      await uploadUserData();
     } catch (error) {
       console.error(error);
       setError("Error uploading question. Please try again.");
