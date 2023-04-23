@@ -159,15 +159,14 @@ const UploadForm = () => {
       createdAt: Date.now(),
       comment: parsedQuestion.comment ? parsedQuestion.comment.trim() : "",
       totalLimit: parsedQuestion.totalLimit
-        ? parseInt(parsedQuestion.totalLimit.trim(), 10)
+        ? parseInt(parsedQuestion.totalLimit.trim()) || 100
         : 100,
     }));
   };
 
   const parseText = (text) => {
-    const delimiter = /[,\t]/;
     const rows = text.trim().split(/\r?\n/);
-    const header = rows[0].split(delimiter).map((value) => value.trim());
+    const header = rows[0].split(",").map((value) => value.trim());
     if (
       header.includes("question") &&
       header.includes("option1") &&
@@ -177,7 +176,7 @@ const UploadForm = () => {
       header.includes("correctOption")
     ) {
       return rows.slice(1).map((row) => {
-        const values = row.split(delimiter).map((value) => value.trim());
+        const values = row.split(",").map((value) => value.trim());
         return {
           question: values[header.indexOf("question")],
           options: {
@@ -189,7 +188,9 @@ const UploadForm = () => {
           correctOption: values[header.indexOf("correctOption")],
           createdAt: Date.now(),
           comment: values[header.indexOf("comment")] || "",
-          totalLimit: parseInt(values[header.indexOf("totalLimit")], 10) || 100,
+          totalLimit: values[header.indexOf("totalLimit")]
+            ? parseInt(values[header.indexOf("totalLimit")].trim()) || 100
+            : 100,
         };
       });
     } else {
@@ -349,6 +350,7 @@ const UploadForm = () => {
       console.error(error);
       setError("Error uploading question. Please try again.");
     }
+    newQuestion();
   };
 
   const LatestData = ({ latestData }) => {
@@ -379,7 +381,7 @@ const UploadForm = () => {
       </div>
     );
   };
-  
+
   return (
     <div className="upload-form-container">
       <form id="myForm" onSubmit={handleSubmit}>
