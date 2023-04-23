@@ -326,6 +326,7 @@ const UploadForm = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    uploadUserData();
     try {
       if (file) {
         await parseFile(file);
@@ -378,129 +379,126 @@ const UploadForm = () => {
   };
 
   return (
-    <div>
+    <div className="upload-form-container">
       <form id="myForm" onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="fileUpload">Upload Questions from File</label>
-          <div {...getRootProps({ className: "dropzone" })}>
-            <input {...getInputProps()} />
-            {file ? (
-              <p>File: {file.name}</p>
-            ) : (
-              <p className="drag-drop-select">
-                Drag and drop a file here, or click to select a file. Only .txt
-                and .csv files are supported.
-              </p>
-            )}
-          </div>
+        <div {...getRootProps({ className: "dropzone" })}>
+          <input {...getInputProps()} />
+          {file ? (
+            <p>File: {file.name}</p>
+          ) : (
+            <p className="drag-drop-select">
+              Drag and drop a file here or click to select a file.
+            </p>
+          )}
         </div>
+        {error && <p className="error-msg">{error}</p>}
         <div className="form-group">
           <label htmlFor="question">Question:</label>
           <input
-            type="text"
             className="form-control inputarea"
-            id="question"
-            name="question"
             placeholder="Enter Your Question Here..."
-            value={userData.question}
+            type="text"
+            id="question"
             onChange={handleQuestionChange}
-            required
+            value={userData.question}
           />
         </div>
         <div className="form-group">
           <label htmlFor="option1">Option 1:</label>
           <input
-            type="text"
             className="form-control inputarea"
-            id="option1"
-            name="option1"
             placeholder="Enter Your Option Here..."
-            value={userData.options.option1}
+            type="text"
+            id="option1"
             onChange={handleOptionChange}
-            required
+            value={userData.options.option1}
           />
         </div>
         <div className="form-group">
           <label htmlFor="option2">Option 2:</label>
           <input
-            type="text"
             className="form-control inputarea"
-            id="option2"
-            name="option2"
             placeholder="Enter Your Option Here..."
-            value={userData.options.option2}
+            type="text"
+            id="option2"
             onChange={handleOptionChange}
-            required
+            value={userData.options.option2}
           />
         </div>
         <div className="form-group">
           <label htmlFor="option3">Option 3:</label>
           <input
-            type="text"
             className="form-control inputarea"
-            id="option3"
-            name="option3"
             placeholder="Enter Your Option Here..."
-            value={userData.options.option3}
+            type="text"
+            id="option3"
             onChange={handleOptionChange}
-            required
+            value={userData.options.option3}
           />
         </div>
         <div className="form-group">
           <label htmlFor="option4">Option 4:</label>
           <input
-            type="text"
             className="form-control inputarea"
-            id="option4"
-            name="option4"
             placeholder="Enter Your Option Here..."
-            value={userData.options.option4}
+            type="text"
+            id="option4"
             onChange={handleOptionChange}
-            required
+            value={userData.options.option4}
           />
         </div>
         <div className="form-group">
-          <label htmlFor="correct-answer">Correct Answer:</label>
+          <label htmlFor="correct-answer">Correct Option:</label>
           <input
             type="number"
-            id="correct-answer"
-            className="form-control inputarea"
-            name="correctOption"
             min="1"
             max="4"
-            defaultValue=""
-            value={userData.correctOption}
+            className="form-control inputarea"
+            placeholder="Set The Correct Answer Here"
+            id="correct-answer"
             onChange={handleCorrectOptionChange}
-            required
+            value={userData.correctOption}
           />
         </div>
         <div className="form-group">
-          <label htmlFor="textUpload">Your Comments:</label>
+          <label htmlFor="total-limit">Total Limit:</label>
+          <input
+            className="form-control inputarea"
+            placeholder="Define your limit..."
+            type="number"
+            id="total-limit"
+            min="1"
+            max="100"
+            onChange={handleTotalLimitChange}
+            value={userData.totalLimit}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="comment">Comment:</label>
           <input
             className="form-control inputarea"
             placeholder="Enter Your Comments Here"
-            id="textUpload"
-            value={userData.text}
+            type="text"
+            id="comment"
             onChange={handleCommentChange}
+            value={userData.comment}
           />
         </div>
-        <div className="form-group">
-          <label htmlFor="totalLimit">Total Limit</label>
-          <input
-            type="number"
-            className="form-control"
-            id="totalLimit"
-            value={userData.totalLimit || ""}
-            onChange={handleTotalLimitChange}
-          />
-        </div>
-        <div>
-          <button type="submit" className="btn btn-primary">
-            Submit
-          </button>
-        </div>
-        {error && <p className="errorMsg">{error}</p>}
+        <button type="submit">Upload</button>
       </form>
+      {latestData.question && (
+        <div id="latestFetchedData">
+          <h3>Latest Uploaded Data:</h3>
+          <p>Question: {latestData.question}</p>
+          <p>Option 1: {latestData.options.option1}</p>
+          <p>Option 2: {latestData.options.option2}</p>
+          <p>Option 3: {latestData.options.option3}</p>
+          <p>Option 4: {latestData.options.option4}</p>
+          <p>Correct Option: {latestData.correctOption}</p>
+          <p>Comment: {latestData.comment}</p>
+          <p>Total Limit: {latestData.totalLimit}</p>
+        </div>
+      )}
       {error && <p>Error uploading question. Please try again.</p>}
       <LatestData latestData={latestData} />
     </div>
