@@ -24,6 +24,8 @@ const UploadForm = () => {
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
+  // const userData = {};
+
   const fetchLatestQuestion = async () => {
     try {
       const response = await fetch(

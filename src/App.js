@@ -2,11 +2,8 @@ import React from "react";
 import "./App.css";
 import UploadForm from "./UploadForm";
 import QuestionList from "./QuestionList";
-// import firebase from 'firebase/app';
 import "firebase/firestore";
 import "firebase/storage";
-// import firebase from 'firebase';
-//"react-scripts": "^2.1.3",   ---this was cut from package.json after "react-dropzone": "^14.2.3",
 
 function App() {
   return (

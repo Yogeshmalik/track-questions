@@ -1,7 +1,7 @@
-import firebase from "firebase/app";
+import firebase from "firebase/compat/app";
 import "firebase/firestore";
 
-export const getTestQuestions = async () => {
+const GetTestQuestions = async () => {
   const db = firebase.firestore();
   const snapshot = await db
     .collection("questions")
@@ -36,6 +36,7 @@ export const updateQuestions = async (questions) => {
   await batch.commit();
 };
 
+export default GetTestQuestions;
 /* This code retrieves a random subset of questions that have a remaining usage greater than 0,
 ordered by their last usage timestamp in ascending order, and limited to 120 questions.
 It then updates the usage limit and timestamp for each question in the batch.
