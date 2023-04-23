@@ -277,9 +277,9 @@ const UploadForm = () => {
       });
       const userDataRef = firebase.database().ref("userData");
       const snapshot = await userDataRef.once("value");
-      const userData = snapshot.val() || {};
+      const existingUserData = snapshot.val() || {};
       const newUserData = {
-        ...userData,
+        ...existingUserData,
         [newQuestionKey]: {
           option1: formattedData.options.option1,
           option2: formattedData.options.option2,
@@ -295,35 +295,6 @@ const UploadForm = () => {
       console.error(error);
       setError("Error uploading question. Please try again.");
     }
-  };
-
-  const LatestData = ({ latestData }) => {
-    if (Object.keys(latestData).length === 0) {
-      return null;
-    }
-    return (
-      <div id="latestFetchedData">
-        <h3>Latest Uploaded Data:</h3>
-        {Object.keys(latestData).length > 0 ? (
-          <div>
-            <p>Question: {latestData.question}</p>
-            {latestData.options && (
-              <>
-                <p>Option 1: {latestData.options.option1}</p>
-                <p>Option 2: {latestData.options.option2}</p>
-                <p>Option 3: {latestData.options.option3}</p>
-                <p>Option 4: {latestData.options.option4}</p>
-              </>
-            )}
-            <p>Total Limit: {latestData.totalLimit}</p>
-            <p>Comment: {latestData.comment}</p>
-            <p>Correct Option: {latestData.correctOption}</p>
-          </div>
-        ) : (
-          <p>No data uploaded yet.</p>
-        )}
-      </div>
-    );
   };
 
   const handleSubmit = async (e) => {
@@ -380,6 +351,35 @@ const UploadForm = () => {
     }
   };
 
+  const LatestData = ({ latestData }) => {
+    if (Object.keys(latestData).length === 0) {
+      return null;
+    }
+    return (
+      <div id="latestFetchedData">
+        <h3>Latest Uploaded Data:</h3>
+        {Object.keys(latestData).length > 0 ? (
+          <div>
+            <p>Question: {latestData.question}</p>
+            {latestData.options && (
+              <>
+                <p>Option 1: {latestData.options.option1}</p>
+                <p>Option 2: {latestData.options.option2}</p>
+                <p>Option 3: {latestData.options.option3}</p>
+                <p>Option 4: {latestData.options.option4}</p>
+              </>
+            )}
+            <p>Total Limit: {latestData.totalLimit}</p>
+            <p>Comment: {latestData.comment}</p>
+            <p>Correct Option: {latestData.correctOption}</p>
+          </div>
+        ) : (
+          <p>No data uploaded yet.</p>
+        )}
+      </div>
+    );
+  };
+  
   return (
     <div className="upload-form-container">
       <form id="myForm" onSubmit={handleSubmit}>
